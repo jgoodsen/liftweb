@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions
  * and limitations under the License.
  */
-package net.liftweb.http
+package net.liftweb
+package http
 
 import _root_.scala.collection.mutable.{HashMap, ListBuffer}
 import _root_.scala.xml.{NodeSeq, Elem, Text, UnprefixedAttribute, Null, MetaData,
@@ -817,7 +818,7 @@ object S extends HasParams {
    * @see #addAnalyzer
    * @see net.liftweb.mapper.DB.addLogFun((String,Long) => Any)
    */
-  def logQuery(query: String, time: Long) = p_queryLog.is += (query, time)
+  def logQuery(query: String, time: Long) = p_queryLog.is += (query -> time)
 
   private[http] def snippetForClass(cls: String): Box[StatefulSnippet] =
   Box.legacyNullTest(_stateSnip.value).flatMap(_.get(cls))
@@ -949,7 +950,7 @@ object S extends HasParams {
   def getHeaders(in: List[(String, String)]): List[(String, String)] = {
     Box.legacyNullTest(_responseHeaders.value).map(
       rh =>
-      rh.headers.elements.toList :::
+      rh.headers.iterator.toList :::
       in.filter{case (n, v) => !rh.headers.contains(n)}
     ).openOr(Nil)
   }
@@ -1565,7 +1566,7 @@ object S extends HasParams {
    */
   def functionMap: Map[String, AFuncHolder] =
   Box.legacyNullTest(_functionMap.value).
-  map(s => Map(s.elements.toList :_*)).openOr(Map.empty)
+  map(s => Map(s.iterator.toList :_*)).openOr(Map.empty)
 
   /**
    * Clears the function map.  potentially very destuctive... use at your own risk!
@@ -1727,7 +1728,7 @@ object S extends HasParams {
       }
 
       def jsonCallback(in: List[String]): JsCmd = {
-        in.firstOption.toList.flatMap{
+        in.headOption.toList.flatMap{
           s =>
           val parsed = JSONParser.parse(s.trim).toList
           val cmds = parsed.map(checkCmd)
@@ -1820,7 +1821,7 @@ object S extends HasParams {
   @serializable
   final class SFuncHolder(val func: String => Any, val owner: Box[String]) extends AFuncHolder {
     def this(func: String => Any) = this(func, Empty)
-    def apply(in: List[String]): Any = in.firstOption.toList.map(func(_))
+    def apply(in: List[String]): Any = in.headOption.toList.map(func(_))
     def duplicate(newOwner: String) = (new SFuncHolder(func, Full(newOwner))).setLife(sessionLife)
   }
 
@@ -1850,7 +1851,7 @@ object S extends HasParams {
    */
   @serializable
   final class NFuncHolder(val func: () => Any,val owner: Box[String]) extends AFuncHolder {
-    def apply(in: List[String]): Any = in.firstOption.toList.map(s => func())
+    def apply(in: List[String]): Any = in.headOption.toList.map(s => func())
     def duplicate(newOwner: String) = (new NFuncHolder(func, Full(newOwner))).setLife(sessionLife)
   }
 
@@ -1904,7 +1905,7 @@ object S extends HasParams {
    *
    * Use fmapFunc(AFuncHolder)(String => T)
    */
-  @deprecated
+  @deprecated("fmapFunc(AFuncHolder)(String => T)")
   def mapFunc(in: AFuncHolder): String = {
     mapFunc(formFuncName, in)
   }
@@ -1914,7 +1915,7 @@ object S extends HasParams {
    *
    * Use fmapFunc(AFuncHolder)(String => T)
    */
-  @deprecated
+  @deprecated("fmapFunc(AFuncHolder)(String => T)")
   def mapFunc(name: String, inf: AFuncHolder): String = {
     addFunctionMap(name, inf)
     name
@@ -1937,11 +1938,11 @@ object S extends HasParams {
   /**
    * Sets an ERROR notice as an XML sequence
    */
-  def error(n: NodeSeq) {p_notice.is += (NoticeType.Error, n,  Empty)}
+  def error(n: NodeSeq) {p_notice.is += ((NoticeType.Error, n,  Empty)) }
   /**
    * Sets an ERROR notice as an XML sequence and associates it with an id
    */
-  def error(id:String, n: NodeSeq) {p_notice.is += (NoticeType.Error, n,  Full(id))}
+  def error(id:String, n: NodeSeq) {p_notice.is += ((NoticeType.Error, n,  Full(id)))}
   /**
    * Sets an ERROR notice as plain text and associates it with an id
    */
@@ -1953,11 +1954,11 @@ object S extends HasParams {
   /**
    * Sets an NOTICE notice as an XML sequence
    */
-  def notice(n: NodeSeq) {p_notice.is += (NoticeType.Notice, n, Empty)}
+  def notice(n: NodeSeq) {p_notice.is += ((NoticeType.Notice, n, Empty))}
   /**
    * Sets an NOTICE notice as and XML sequence and associates it with an id
    */
-  def notice(id:String, n: NodeSeq) {p_notice.is += (NoticeType.Notice, n,  Full(id))}
+  def notice(id:String, n: NodeSeq) {p_notice.is += ((NoticeType.Notice, n,  Full(id)))}
   /**
    * Sets an NOTICE notice as plai text and associates it with an id
    */
@@ -1969,11 +1970,11 @@ object S extends HasParams {
   /**
    * Sets an WARNING notice as an XML sequence
    */
-  def warning(n: NodeSeq) {p_notice += (NoticeType.Warning, n, Empty)}
+  def warning(n: NodeSeq) {p_notice += ((NoticeType.Warning, n, Empty))}
   /**
    * Sets an WARNING notice as an XML sequence and associates it with an id
    */
-  def warning(id:String, n: NodeSeq) {p_notice += (NoticeType.Warning, n,  Full(id))}
+  def warning(id:String, n: NodeSeq) {p_notice += ((NoticeType.Warning, n,  Full(id)))}
   /**
    * Sets an WARNING notice as plain text and associates it with an id
    */
@@ -1986,7 +1987,7 @@ object S extends HasParams {
 
 
   private [http] def message(msg: String, notice: NoticeType.Value) { message(Text(msg), notice)}
-  private [http] def message(msg: NodeSeq, notice: NoticeType.Value) { p_notice += (notice, msg, Empty)}
+  private [http] def message(msg: NodeSeq, notice: NoticeType.Value) { p_notice += ((notice, msg, Empty))}
   private [http] def messagesFromList(list: List[(NoticeType.Value, NodeSeq, Box[String])]) { list foreach ( p_notice += _) }
 
   /**
