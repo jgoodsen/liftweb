@@ -725,11 +725,12 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
                 cleanUpBeforeRender
 
                 PageName(request.uri+" -> "+request.path)
-
+                LiftRules.allowParallelSnippets.doWith(() => !Props.inGAE) {
                 (request.location.flatMap(_.earlyResponse) or
                  LiftRules.earlyResponse.firstFull(request)) or {
                   ((locTemplate or findVisibleTemplate(request.path, request)).
                    // Phase 1: snippets & templates processing
+
                    map(xml => processSurroundAndInclude(PageName get, xml)) match {
                       case Full(rawXml: NodeSeq) => {
                           // Phase 2: Head & Tail merge, add additional elements to body & head
@@ -754,6 +755,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
                         }
                       case _ => if (LiftRules.passNotFoundToChain) Empty else Full(request.createNotFound)
                     })
+                   }
                 }
 
               case Right(Full(resp)) => Full(resp)
@@ -986,6 +988,12 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
     }
   }
 
+  private final def findNSAttr(attrs: MetaData, prefix: String, key: String): Option[Seq[Node]] =
+  attrs match {
+    case Null => Empty
+    case p: PrefixedAttribute if p.pre == prefix && p.key == key => Some(p.value)
+    case x => findNSAttr(x.next, prefix, key)
+  }
 
   private def processSnippet(page: String, snippetName: Box[String],
                              attrs: MetaData,
@@ -993,7 +1001,9 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
                              passedKids: NodeSeq): NodeSeq = {
     val isForm = !attrs.get("form").toList.isEmpty
 
-    val eagerEval: Boolean = attrs.get("eager_eval").map(toBoolean) getOrElse false
+    val eagerEval: Boolean = (attrs.get("eager_eval").map(toBoolean) or
+                              findNSAttr(attrs, "liftx", "eager_eval").map(toBoolean)
+                              ) getOrElse false
 
     val kids = if (eagerEval) processSurroundAndInclude(page, passedKids) else passedKids
 
@@ -1130,9 +1140,9 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
   // if the "do:lazy" attribute is part of the snippet, create an
   // actor and send the message off to that actor
   private def processOrDefer(node: Elem)(f: => NodeSeq): NodeSeq = {
-    val isLazy =
+    val isLazy = LiftRules.allowParallelSnippets() &&
     node.attributes.find{
-      case p: PrefixedAttribute if p.pre == "do" && p.key == "lazy" => true
+      case p: PrefixedAttribute => p.pre == "liftx" && (p.key == "par" || p.key == "parallel")
       case _ => false}.isDefined
 
     if (isLazy) {

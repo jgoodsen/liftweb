@@ -468,6 +468,11 @@ object LiftRules extends Factory {
    */
   val lazySnippetTimeout: FactoryMaker[TimeSpan] = new FactoryMaker(() => 30 seconds) {}
 
+    /**
+   * Does the current context support parallel snippet execution
+   */
+  val allowParallelSnippets: FactoryMaker[Boolean] = new FactoryMaker(() => false) {}
+
   /**
   * If a deferred snippet has a failure during render,
   * what should we display?
