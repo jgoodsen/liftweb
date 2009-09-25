@@ -468,15 +468,15 @@ object LiftRules extends Factory {
    */
   val lazySnippetTimeout: FactoryMaker[TimeSpan] = new FactoryMaker(() => 30 seconds) {}
 
-    /**
+  /**
    * Does the current context support parallel snippet execution
    */
   val allowParallelSnippets: FactoryMaker[Boolean] = new FactoryMaker(() => false) {}
 
   /**
-  * If a deferred snippet has a failure during render,
-  * what should we display?
-  */
+   * If a deferred snippet has a failure during render,
+   * what should we display?
+   */
   val deferredSnippetFailure: FactoryMaker[Failure => NodeSeq] =
   new FactoryMaker(() => {failure: Failure => {
         if (Props.devMode)
@@ -501,10 +501,10 @@ object LiftRules extends Factory {
         else NodeSeq.Empty
       }}) {}
 
-   /**
-  * If a deferred snippet has a failure during render,
-  * what should we display?
-  */
+  /**
+   * If a deferred snippet has a failure during render,
+   * what should we display?
+   */
   val deferredSnippetTimeout: FactoryMaker[() => NodeSeq] =
   new FactoryMaker(() => {() => {
         if (Props.devMode)
@@ -520,9 +520,9 @@ object LiftRules extends Factory {
         else NodeSeq.Empty
       }}) {}
 
- /**
-  * Should comments be stripped from the served XHTML
-  */
+  /**
+   * Should comments be stripped from the served XHTML
+   */
   val stripComments: FactoryMaker[() => Boolean] =
   new FactoryMaker(() => {() => {
         if (Props.devMode)
