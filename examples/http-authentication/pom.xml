@@ -4,8 +4,8 @@
   <parent>
     <groupId>net.liftweb</groupId>
     <artifactId>lift-examples-parent</artifactId>
-    <version>1.1-SNAPSHOT</version>
-    <relativePath>../pom.xml</relativePath>    
+    <version>1.1-scala2.2.7.RC1-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>http-authentication</artifactId>
