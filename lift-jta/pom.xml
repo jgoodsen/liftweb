@@ -3,7 +3,7 @@
   <parent>
     <artifactId>lift</artifactId>
     <groupId>net.liftweb</groupId>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.1-scala2.2.7.RC1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -98,7 +98,7 @@
       <version>1.0</version>
     </dependency>
 
-    <!-- TESTING --> 
+    <!-- TESTING -->
     <dependency>
       <groupId>org.scala-tools.testing</groupId>
       <artifactId>scalatest</artifactId>
@@ -116,6 +116,6 @@
       <artifactId>junit4runner</artifactId>
       <version>1.0</version>
       <scope>test</scope>
-    </dependency-->    
+    </dependency-->
   </dependencies>
 </project>

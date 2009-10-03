@@ -3,7 +3,7 @@
   <parent>
     <artifactId>lift</artifactId>
     <groupId>net.liftweb</groupId>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.1-scala2.2.7.RC1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <artifactId>lift-textile</artifactId>
@@ -24,7 +24,7 @@
     <dependency>
       <groupId>net.liftweb</groupId>
       <artifactId>lift-util</artifactId>
-      <version>1.1-SNAPSHOT</version>
+      <version>1.1-scala2.2.7.RC1-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
     <dependency>
