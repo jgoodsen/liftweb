@@ -356,7 +356,7 @@ class LiftServlet {
         (request, S.init(request, session)
          (LiftRules.performTransform(
               convertAnswersToCometResponse(session,
-                                            answers.toArray, actors)))),
+                                            answers.toList, actors)))),
                                              request.request))
 
     cont ! BeginContinuation

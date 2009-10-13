@@ -775,7 +775,7 @@ object SHtml {
     def apply(in: T) = items.filter(_.key == in).head.xhtml
     def apply(in: Int) = items(in).xhtml
     def map[A](f: ChoiceItem[T] => A) = items.map(f)
-    def flatMap[A](f: ChoiceItem[T] => scala.collection.Traversable[A])(implicit bf : scala.collection.generic.BuilderFactory[A, Seq[A], scala.collection.Sequence[ChoiceItem[T]]]): Seq[A] = 
+    def flatMap[A](f: ChoiceItem[T] => scala.collection.Traversable[A])(implicit bf : scala.collection.generic.BuilderFactory[A, Seq[A], Seq[ChoiceItem[T]]]): Seq[A] = 
       items.flatMap(f)(bf)
     def filter(f: ChoiceItem[T] => Boolean) = items.filter(f)
     def toForm: NodeSeq = flatMap(ChoiceHolder.htmlize)

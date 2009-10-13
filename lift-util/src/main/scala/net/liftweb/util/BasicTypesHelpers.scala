@@ -27,6 +27,7 @@ object BasicTypesHelpers extends BasicTypesHelpers with StringHelpers with Contr
 trait BasicTypesHelpers { 
   self: StringHelpers with ControlHelpers =>
     
+    /*
     import scala.collection.generic._
   
   implicit def nsBuilder[T]: BuilderFactory[Node, NodeSeq, Seq[T]] =
@@ -42,6 +43,7 @@ trait BasicTypesHelpers {
 	  def result: NodeSeq = buffer.toList
 	}
     }
+    */
 
   /*
   implicit def seqNBuilder[T, Q <: Node]: BuilderFactory[Q, Seq[Q], Seq[T]] =

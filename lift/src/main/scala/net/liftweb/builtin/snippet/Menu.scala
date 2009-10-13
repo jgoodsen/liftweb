@@ -47,6 +47,7 @@ object Menu extends DispatchSnippet {
     case "json" => jsonMenu
   }
 
+  /*
   import scala.collection.generic._
 
   def jsBuilder[T]: BuilderFactory[JsExp, Seq[JsExp], Seq[T]] =
@@ -63,6 +64,7 @@ object Menu extends DispatchSnippet {
 	  
 	}
     }
+    */
 
   /**
    * <p>This snippet method renders a menu representing your SiteMap contents. The
@@ -204,7 +206,7 @@ object Menu extends DispatchSnippet {
     }
 
     def buildItems(in: Seq[MenuItem]): JsExp =
-    JsArray(in.map(buildItem)(jsBuilder) :_*)
+    JsArray(in.map(buildItem) :_*)
 
     Script(JsCrVar(S.attr("var") openOr "lift_menu",
                    JsObj("menu" -> buildItems(toRender))))

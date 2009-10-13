@@ -45,7 +45,7 @@ trait XMLApiHelper {
   (for (req <- S.request) yield req.path.partPath match {
       case _ :: name :: _ => name
       case _ => ""
-    }).map(Text)
+    }).map(s => Text(s))
 
   implicit def nodeSeqToResponse(in: NodeSeq): LiftResponse =
   buildResponse(true, Empty, in)
