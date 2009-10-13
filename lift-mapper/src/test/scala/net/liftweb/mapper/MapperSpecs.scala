@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2008 WorldWide Conferencing, LLC
+ * Copyright 2007-2009 WorldWide Conferencing, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,14 +30,39 @@ object MapperSpecsRunner extends ConsoleRunner(MapperSpecs)
 object MapperSpecs extends Specification {
   def providers = DBProviders.asList
 
+  /*
+   private def logDBStuff(log: DBLog, len: Long) {
+   println(" in log stuff "+log.getClass.getName)
+   log match {
+   case null =>
+   case _ => println(log.allEntries)
+   }
+   }
+
+   DB.addLogFunc(logDBStuff)
+   */
+
+  def dbSetup() {
+    Schemifier.destroyTables_!!(ignoreLogger _, SampleModel, SampleTag, 
+				Dog, User)
+    Schemifier.schemify(true, ignoreLogger _, SampleModel, SampleTag,
+                        User,
+                        Dog)
+  }
+
   providers.foreach(provider => {
+
+      def cleanup() {
+        try { provider.setupDB } catch { case e=> skip("Provider %s not available: %s".format(provider, e)) }
+
+        Schemifier.destroyTables_!!(ignoreLogger _, SampleModel, SampleTag, User, Dog)
+        Schemifier.schemify(true, ignoreLogger _, SampleModel, SampleTag, User, Dog)
+      }
+
       ("Mapper for " + provider.name) should {
 
         "schemify" in {
-          try { provider.setupDB } catch { case e => skip(e.getMessage) }
-
-          Schemifier.destroyTables_!!(ignoreLogger _, SampleModel, SampleTag)
-          Schemifier.schemify(true, ignoreLogger _, SampleModel, SampleTag)
+	  cleanup()
 
           val elwood = SampleModel.find(By(SampleModel.firstName, "Elwood")).open_!
           val madeline = SampleModel.find(By(SampleModel.firstName, "Madeline")).open_!
@@ -58,11 +83,9 @@ object MapperSpecs extends Specification {
           elwood.id.is must be_<(madeline.id.is)
         }
 
-        "Like works" in {
-          try { provider.setupDB } catch { case e => skip(e.getMessage) }
 
-          Schemifier.destroyTables_!!(ignoreLogger _, SampleModel, SampleTag)
-          Schemifier.schemify(true, ignoreLogger _, SampleModel, SampleTag)
+        "Like works" in {
+          cleanup()
 
           val oo = SampleTag.findAll(Like(SampleTag.tag, "%oo%"))
 
@@ -89,11 +112,8 @@ object MapperSpecs extends Specification {
         }
 
         "Nullable Long works" in {
-          try { provider.setupDB } catch { case e => skip(e.getMessage) }
+          cleanup()
 
-          Schemifier.destroyTables_!!(ignoreLogger _, SampleModel, SampleTag)
-          Schemifier.schemify(true, ignoreLogger _, SampleModel, SampleTag)
-          
           SampleModel.create.firstName("fruit").moose(Full(77L)).save
 
           SampleModel.findAll(By(SampleModel.moose, Empty)).length must_== 3L
@@ -103,32 +123,20 @@ object MapperSpecs extends Specification {
         }
 
         "enforce NOT NULL" in {
-          try { provider.setupDB } catch { case e => skip(e.getMessage) }
-
-          Schemifier.destroyTables_!!(ignoreLogger _, SampleModel, SampleTag)
-          Schemifier.schemify(true, ignoreLogger _, SampleModel, SampleTag)
-
+          cleanup()
 
           val nullString: String = null
           try {
-            SampleModel.create.firstName("Not Null").cnotNull(nullString).save
+            SampleModel.create.firstName("Not Null").notNull(nullString).save
             0 must_== 1
           } catch {
             case e: java.sql.SQLException =>
           }
         }
 
-
-
         "Precache works" in {
-          try { provider.setupDB } catch { case e => skip(e.getMessage) }
 
-          Schemifier.destroyTables_!!(ignoreLogger _, SampleModel, SampleTag)
-          Schemifier.schemify(true, ignoreLogger _, SampleModel, SampleTag)
-
-          Schemifier.destroyTables_!!(ignoreLogger _, SampleModel, SampleTag)
-          Schemifier.schemify(true, ignoreLogger _, SampleModel, SampleTag)
-
+          cleanup()
 
           val oo = SampleTag.findAll(By(SampleTag.tag, "Meow"),
                                      PreCache(SampleTag.model))
@@ -139,13 +147,32 @@ object MapperSpecs extends Specification {
 	  t.model.cached_? must beTrue
         }
 
+        "Precache works with OrderBy" in {
+          if ((provider ne DBProviders.DerbyProvider)
+              && (provider ne DBProviders.MySqlProvider)) { // this doesn't work for Derby, but it's a derby bug
+	    // nor does it work in MySQL, but it's a MySQL limitation
+            //  try { provider.setupDB } catch { case e => skip(e.getMessage) }
+
+            cleanup()
+
+	    val dogs = Dog.findAll(By(Dog.name,"fido"),OrderBy(Dog.name,Ascending),
+                                   PreCache(Dog.owner))
+
+            val oo = SampleTag.findAll(OrderBy(SampleTag.tag, Ascending),
+                                       MaxRows(2),
+                                       PreCache(SampleTag.model))
+
+            (oo.length > 0) must beTrue
+
+            for (t <- oo)
+            t.model.cached_? must beTrue
+          }
+        }
+
         "Non-deterministic Precache works" in {
-          try { provider.setupDB } catch { case e => skip(e.getMessage) }
+          cleanup()
 
-          Schemifier.destroyTables_!!(ignoreLogger _, SampleModel, SampleTag)
-          Schemifier.schemify(true, ignoreLogger _, SampleModel, SampleTag)
-
-
+          val dogs = Dog.findAll(By(Dog.name,"fido"), PreCache(Dog.owner, false))
           val oo = SampleTag.findAll(By(SampleTag.tag, "Meow"),
                                      PreCache(SampleTag.model, false))
 
@@ -155,11 +182,25 @@ object MapperSpecs extends Specification {
 	  t.model.cached_? must beTrue
         }
 
-        "Save flag works" in {
-          try { provider.setupDB } catch { case e => skip(e.getMessage) }
+        "Non-deterministic Precache works with OrderBy" in {
+          cleanup()
 
-          Schemifier.destroyTables_!!(ignoreLogger _, SampleModel, SampleTag)
-          Schemifier.schemify(true, ignoreLogger _, SampleModel, SampleTag)
+          val dogs = Dog.findAll(By(Dog.name,"fido"),OrderBy(Dog.name,Ascending),
+                                 PreCache(Dog.owner, false))
+
+          val oo = SampleTag.findAll(OrderBy(SampleTag.tag, Ascending),
+                                     MaxRows(2),
+                                     PreCache(SampleTag.model, false))
+
+          (oo.length > 0) must beTrue
+
+          for (t <- oo)
+	  t.model.cached_? must beTrue
+        }
+      
+
+        "Save flag works" in {
+          cleanup()
 
           val elwood = SampleModel.find(By(SampleModel.firstName, "Elwood")).open_!
 
@@ -175,6 +216,15 @@ object MapperSpecs extends Specification {
 
           SampleModel.find(By(SampleModel.firstName, "Elwood")).isEmpty must_== true
         }
+
+        "accept a Seq[T] as argument to ByList query parameter" in {
+          // See http://github.com/dpp/liftweb/issues#issue/77 for original request
+          cleanup()
+          val seq: Seq[String] = List("Elwood", "Archer")
+          val result = SampleModel.findAll(ByList(SampleModel.firstName, seq))
+          result.length must_== 2
+        }
+
       }
     })
 
@@ -217,7 +267,62 @@ class SampleModel extends KeyedMapper[Long, SampleModel] {
   object id extends MappedLongIndex(this)
   object firstName extends MappedString(this, 32)
   object moose extends MappedNullableLong(this)
-  object cnotNull extends MappedString(this, 32) {
+  object notNull extends MappedString(this, 32) {
     override def dbNotNull_? = true
+  }
+}
+
+/**
+ * The singleton that has methods for accessing the database
+ */
+object User extends User with MetaMegaProtoUser[User] {
+  override def dbAddTable = Full(populate _)
+  private def populate {
+    create.firstName("Elwood").save
+    create.firstName("Madeline").save
+    create.firstName("Archer").save
+  }
+
+  override def dbTableName = "users" // define the DB table name
+  override def screenWrap = Full(<lift:surround with="default" at="content">
+      <lift:bind /></lift:surround>)
+  // define the order fields will appear in forms and output
+  override def fieldOrder = List(id, firstName, lastName, email,
+                                 locale, timezone, password, textArea)
+
+  // comment this line out to require email validations
+  override def skipEmailValidation = true
+}
+ 
+/**
+ * An O-R mapped "User" class that includes first name, last name, password and we add a "Personal Essay" to it
+ */
+class User extends MegaProtoUser[User] {
+  def getSingleton = User // what's the "meta" server
+
+  // define an additional field for a personal essay
+  object textArea extends MappedTextarea(this, 2048) {
+    override def textareaRows  = 10
+    override def textareaCols = 50
+    override def displayName = "Personal Essay"
+  }
+}
+
+class Dog extends LongKeyedMapper[Dog] with IdPK {
+  def getSingleton = Dog
+
+  object name extends MappedPoliteString(this, 128)
+  object weight extends MappedInt(this)
+  object owner extends MappedLongForeignKey(this,User)
+}
+
+object Dog extends Dog with LongKeyedMetaMapper[Dog] {
+  override def dbAddTable = Full(populate _)
+
+  private def populate {
+    create.name("Elwood").save
+    create.name("Madeline").save
+    create.name("Archer").save
+    create.name("fido").owner(User.find(By(User.firstName, "Elwood"))).save
   }
 }

@@ -820,7 +820,6 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
                                         wholeTag)
 
               case Full(inst) => {
-
                   val ar: Array[AnyRef] = List(Group(kids)).toArray
                   ((Helpers.invokeMethod(inst.getClass, inst, method, ar)) or
                    Helpers.invokeMethod(inst.getClass, inst, method)) match {

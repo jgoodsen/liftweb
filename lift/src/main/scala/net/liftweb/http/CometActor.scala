@@ -628,8 +628,8 @@ sealed abstract class CometMessage
  * Impersonates the actual comet response content
  */
 private [http] class XmlOrJsCmd(val id: String,
-                                val xml: Box[NodeSeq],
-                                val fixedXhtml: Box[NodeSeq],
+                                _xml: Box[NodeSeq],
+                                _fixedXhtml: Box[NodeSeq],
                                 val javaScript: Box[JsCmd],
                                 val destroy: Box[JsCmd],
                                 spanFunc: (Long, NodeSeq) => NodeSeq,
@@ -638,6 +638,9 @@ private [http] class XmlOrJsCmd(val id: String,
 
   def this(id: String, ro: RenderOut, spanFunc: (Long, NodeSeq) => NodeSeq, notices: List[(NoticeType.Value, NodeSeq, Box[String])]) =
   this(id, ro.xhtml,ro.fixedXhtml, ro.script, ro.destroyScript, spanFunc, ro.ignoreHtmlOnJs, notices)
+
+  val xml = _xml.flatMap(content => S.session.map(s => s.processSurroundAndInclude("JS SetHTML id: "+id, content)))
+  val fixedXhtml = _fixedXhtml.flatMap(content => S.session.map(s => s.processSurroundAndInclude("JS SetHTML id: "+id, content)))
 
   /**
    * Returns the JsCmd that will be sent to client

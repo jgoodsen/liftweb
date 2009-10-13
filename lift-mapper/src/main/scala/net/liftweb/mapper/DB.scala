@@ -546,6 +546,7 @@ object DB {
        "initrans" ,
        "insert" ,
        "instance" ,
+       "notnull", // reserved word for PostgreSQL
        "int" ,
        "integer" ,
        "intersect" ,

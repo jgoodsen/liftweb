@@ -71,6 +71,26 @@ object Examples extends Specification {
     parse("""{"num": 2.5e-5 }""") mustEqual JObject(List(JField("num", JDouble(2.5e-5))))
   }
 
+  "JSON building example" in {
+    val json = concat(JField("name", JString("joe")), JField("age", JInt(34))) ++ concat(JField("name", JString("mazy")), JField("age", JInt(31)))
+    compact(render(json)) mustEqual """[{"name":"joe","age":34},{"name":"mazy","age":31}]"""
+  }
+
+  "JSON building with implicit primitive conversions example" in {
+    import Implicits._
+    val json = concat(JField("name", "joe"), JField("age", 34)) ++ concat(JField("name", "mazy"), JField("age", 31))
+    compact(render(json)) mustEqual """[{"name":"joe","age":34},{"name":"mazy","age":31}]"""
+  }
+
+  "Example which collects all integers and forms a new JSON" in {
+    val json = parse(person)
+    val ints = json.fold(JNothing: JValue) { (a, v) => v match {
+      case x: JInt => a ++ x
+      case _ => a
+    }}
+    compact(render(ints)) mustEqual """[35,33]"""
+  }
+
   val lotto = """
 {
   "lotto":{

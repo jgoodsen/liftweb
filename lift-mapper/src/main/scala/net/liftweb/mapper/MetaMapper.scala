@@ -1168,7 +1168,7 @@ final case class Distinct[O <: Mapper[O]]() extends QueryParam[O]
 final case class OrderBySql[O <: Mapper[O]](sql: String,
                                             checkedBy: IHaveValidatedThisSQL) extends QueryParam[O]
 
-final case class ByList[O<:Mapper[O], T](field: MappedField[T,O], vals: List[T]) extends QueryParam[O]
+final case class ByList[O<:Mapper[O], T](field: MappedField[T,O], vals: Seq[T]) extends QueryParam[O]
 /**
  * Represents a query criterion using a parameterized SQL string. Parameters are
  * substituted in order. For Date/Time types, passing a java.util.Date will result in a

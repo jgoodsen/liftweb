@@ -166,7 +166,7 @@ class LiftServlet {
         case f: Failure => Full(req.createNotFound(f))
       }
     } else {
-	    // otherwise do a stateful response
+      // otherwise do a stateful response
       val liftSession = getLiftSession(req)
       S.init(req, liftSession) {
         dispatchStatefulRequest(req, liftSession)
@@ -356,7 +356,7 @@ class LiftServlet {
          (LiftRules.performTransform(
               convertAnswersToCometResponse(session,
                                             answers.toArray, actors)))),
-                                              request.request))
+                                             request.request))
 
     cont ! BeginContinuation
 
@@ -382,10 +382,21 @@ class LiftServlet {
     }
   }
 
-  private def convertAnswersToCometResponse(sessionActor: LiftSession, ret: Seq[AnswerRender], actors: List[(CometActor, Long)]): LiftResponse = {
-    val ret2 = ret.toList
+  private def convertAnswersToCometResponse(session: LiftSession, ret: Seq[AnswerRender], actors: List[(CometActor, Long)]): LiftResponse = {
+    val ret2: List[AnswerRender] = ret.toList
     val jsUpdateTime = ret2.map(ar => "lift_toWatch['"+ar.who.uniqueId+"'] = '"+ar.when+"';").mkString("\n")
-    val jsUpdateStuff = ret2.map(ar => ar.response.toJavaScript(sessionActor, ar.displayAll))
+    val jsUpdateStuff = ret2.map{
+      ar =>
+      val ret = ar.response.toJavaScript(session, ar.displayAll)
+
+      if (!S.functionMap.isEmpty) {
+        session.updateFunctionMap(S.functionMap,
+                                  ar.who.uniqueId, ar.when)
+        S.clearFunctionMap
+      }
+
+      ret
+    }
 
     actors foreach(_._1 ! ClearNotices)
 

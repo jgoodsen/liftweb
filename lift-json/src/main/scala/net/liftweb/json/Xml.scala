@@ -18,37 +18,35 @@ package net.liftweb.json
 
 object Xml {
   import JsonAST._
-  import scala.xml._ // {Elem, Group, MetaData, Node, NodeSeq, Text, TopScope}
+  import scala.xml._
 
   def toJson(xml: NodeSeq): JValue = {
-    def empty_?(node: Node) = node.child.isEmpty // childElements(node).size == 0
+    def empty_?(node: Node) = node.child.isEmpty
     def leaf_?(node: Node) = {
       var foundText = false
       var cnt = 0
 
       def flattenText(in: List[Node]): Unit = in match {
-	case Nil => ()
-	case _ if cnt > 1 => ()
-	case (t: SpecialNode) :: rest => foundText = true
-	flattenText(rest)
-	
-	case (g: Group) :: rest => 
-	  flattenText(g.nodes.toList)
-	flattenText(rest)
-	
-	case (e: Elem) :: rest => 
-	  cnt = cnt + 1
-	flattenText(e.child.toList)
-	flattenText(rest)
-	
-	case e :: rest => 
-	  cnt = cnt + 1
-	  flattenText(rest)
+        case Nil => ()
+        case _ if cnt > 1 => ()
+        case (t: SpecialNode) :: rest => 
+          foundText = true
+          flattenText(rest)	
+        case (g: Group) :: rest => 
+          flattenText(g.nodes.toList)
+          flattenText(rest)
+        case (e: Elem) :: rest => 
+          cnt = cnt + 1
+          flattenText(e.child.toList)
+          flattenText(rest)	
+        case e :: rest => 
+          cnt = cnt + 1
+          flattenText(rest)
       }
       
       node match {
-	case g: Group => flattenText(g.nodes.toList)
-	case n: Node => flattenText(n.child.toList)
+        case g: Group => flattenText(g.nodes.toList)
+        case n: Node => flattenText(n.child.toList)
       }
       (foundText && cnt == 0) || (!foundText && cnt == 1)
     }
@@ -62,18 +60,6 @@ object Xml {
     def nameOf(n: Node) = (if (n.prefix ne null) n.prefix + ":" else "") + n.label
     def makeField(name: String, value: String) = JField(name, JString(value))
     def buildAttrs(n: Node) = n.attributes.map((a: MetaData) => makeField(a.key, a.value.text)).toList
-    /*
-    def childElements(n: Node): List[Node] = 
-    n.child.toList.flatMap { 
-      case x: Elem => x :: childElements(x)
-      case x: Text => x :: Nil
-      case g: Group => 
-	println("In group "+g)
-	g.nodes.flatMap(childElements) 
-      //case x: Group => Text(x.text) :: Nil
-      case _ => Nil
-    }
-    */
 
     def build(root: NodeSeq, rootName: Option[String], argStack: List[JValue]): List[JValue] = root match {
       case n: Node =>

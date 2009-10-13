@@ -45,7 +45,7 @@ object DBProviders {
           }
         }
 
-        deleteIt(f)
+        // deleteIt(f)
 
         DB.defineConnectionManager(DefaultConnectionIdentifier, vendor)
       }

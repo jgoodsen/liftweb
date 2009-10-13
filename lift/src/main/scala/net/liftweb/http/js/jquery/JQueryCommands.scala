@@ -93,7 +93,7 @@ object JqJE {
    * Append content to a JQuery
    */
   case class JqAppend(content: NodeSeq) extends JsExp with JQueryRight with JQueryLeft {
-    override def toJsCmd = "append("+fixHtml("inline", content)+")"
+    override val toJsCmd = "append("+fixHtml("inline", content)+")"
   }
 
   /**
@@ -108,21 +108,21 @@ object JqJE {
    * AppendTo content to a JQuery
    */
   case class JqAppendTo(content: NodeSeq) extends JsExp with JQueryRight with JQueryLeft {
-    override def toJsCmd = "appendTo("+fixHtml("inline", content)+")"
+    override val toJsCmd = "appendTo("+fixHtml("inline", content)+")"
   }
 
   /**
    * Prepend content to a JQuery
    */
   case class JqPrepend(content: NodeSeq) extends JsExp with JQueryRight with JQueryLeft {
-    override def toJsCmd = "prepend("+fixHtml("inline", content)+")"
+    override val toJsCmd = "prepend("+fixHtml("inline", content)+")"
   }
 
   /**
    * PrependTo content to a JQuery
    */
   case class JqPrependTo(content: NodeSeq) extends JsExp with JQueryRight with JQueryLeft {
-    override def toJsCmd = "prependTo("+fixHtml("inline", content)+")"
+    override val toJsCmd = "prependTo("+fixHtml("inline", content)+")"
   }
 
   object JqCss {
@@ -137,7 +137,7 @@ object JqJE {
    * a cleaner innerHTML.
    */
   case class JqEmptyAfter(content: NodeSeq) extends JsExp with JQueryRight with JQueryLeft {
-    override def toJsCmd = "empty().after("+fixHtml("inline", content)+")"
+    override val toJsCmd = "empty().after("+fixHtml("inline", content)+")"
   }
 
   object JqHtml {
@@ -146,7 +146,7 @@ object JqJE {
     }
 
     def apply(content: NodeSeq) = new JsExp with JQueryRight with JQueryLeft {
-      def toJsCmd = "html("+fixHtml("inline", content)+")"
+      val toJsCmd = "html("+fixHtml("inline", content)+")"
     }
   }
 
@@ -250,10 +250,11 @@ object JqJsCmds {
 
 
   case class JqSetHtml(uid: String, content: NodeSeq) extends JsCmd {
-    def toJsCmd = {
-      val ret = "try{jQuery("+("#"+uid).encJs+").each(function(i) {this.innerHTML = "+fixHtml(uid, content)+";});} catch (e) {}"
-      ret
-    }
+    /**
+    * Eagerly evaluate
+    */
+    val toJsCmd = 
+      "try{jQuery("+("#"+uid).encJs+").each(function(i) {this.innerHTML = "+fixHtml(uid, content)+";});} catch (e) {}"
   }
 
   object Show {
@@ -292,7 +293,7 @@ object JqJsCmds {
   }
 
   class ModalDialog(html: NodeSeq, css: Box[String]) extends JsCmd {
-    def toJsCmd = "jQuery.blockUI({ message: "+AltXML.toXML(Group(S.session.map(s =>
+    val toJsCmd = "jQuery.blockUI({ message: "+AltXML.toXML(Group(S.session.map(s =>
           s.fixHtml(s.processSurroundAndInclude("Modal Dialog", html))).openOr(html)), false, true, S.ieMode).encJs+
     (css.map(w => ",  css: '"+w+"' ").openOr("")) + "});"
   }

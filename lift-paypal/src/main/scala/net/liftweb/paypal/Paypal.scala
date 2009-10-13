@@ -91,6 +91,87 @@ object PaypalTransactionStatus extends Enumeration {
   }
 }
 
+/**
+ * A paramater set that takes request paramaters (from Req) and assigns them
+ * to properties of this class
+ *
+ * @param params The paramaters from the incomming request
+ */
+class PayPalInfo(params: HasParams) {
+  private val r = params
+  val itemName = r.param("item_name")
+  val business = r.param("business")
+  val itemNumber = r.param("item_number")
+  val paymentStatus: Box[PaypalTransactionStatus.Value] = r.param("payment_status").flatMap(PaypalTransactionStatus.find)
+  val mcGross = r.param("mc_gross")
+  val paymentCurrency = r.param("mc_currency")
+  val txnId = r.param("txn_id")
+  val receiverEmail = r.param("receiver_email")
+  val receiverId = r.param("receiver_id")
+  val quantity = r.param("quantity")
+  val numCartItems = r.param("num_cart_items")
+  val paymentDate = r.param("payment_date")
+  val firstName = r.param("first_name")
+  val lastName = r.param("last_name")
+  val paymentType = r.param("payment_type")
+  val paymentGross = r.param("payment_gross")
+  val paymentFee = r.param("payment_fee")
+  val settleAmount = r.param("settle_amount")
+  val memo = r.param("memo")
+  val payerEmail = r.param("payer_email")
+  val txnType = r.param("txn_type")
+  val payerStatus = r.param("payer_status")
+  val addressStreet = r.param("address_street")
+  val addressCity = r.param("address_city")
+  val addressState = r.param("address_state")
+  val addressZip = r.param("address_zip")
+  val addressCountry = r.param("address_country")
+  val addressStatus = r.param("address_status")
+  val tax = r.param("tax")
+  val optionName1 = r.param("option_name1")
+  val optionSelection1 = r.param("option_selection1")
+  val optionName2 = r.param("option_name2")
+  val optionSelection2 = r.param("option_selection2")
+  val forAuction = r.param("for_auction")
+  val invoice = r.param("invoice")
+  val custom = r.param("custom")
+  val notifyVersion = r.param("notify_version")
+  val verifySign = r.param("verify_sign")
+  val payerBusinessName = r.param("payer_business_name")
+  val payerId =r.param("payer_id")
+  val mcCurrency = r.param("mc_currency")
+  val mcFee = r.param("mc_fee")
+  val exchangeRate = r.param("exchange_rate")
+  val settleCurrency  = r.param("settle_currency")
+  val parentTxnId  = r.param("parent_txn_id")
+  val pendingReason = r.param("pending_reason")
+  val reasonCode = r.param("reason_code")
+  val subscrId = r.param("subscr_id")
+  val subscrDate = r.param("subscr_date")
+  val subscrEffective  = r.param("subscr_effective")
+  val period1 = r.param("period1")
+  val period2 = r.param("period2")
+  val period3 = r.param("period3")
+  val amount = r.param("amt")
+  val amount1 = r.param("amount1")
+  val amount2 = r.param("amount2")
+  val amount3 = r.param("amount3")
+  val mcAmount1 = r.param("mc_amount1")
+  val mcAmount2 = r.param("mc_amount2")
+  val mcAmount3 = r.param("mcamount3")
+  val recurring = r.param("recurring")
+  val reattempt = r.param("reattempt")
+  val retryAt = r.param("retry_at")
+  val recurTimes = r.param("recur_times")
+  val username = r.param("username")
+  val password = r.param("password")
+
+  val auctionClosingDate  = r.param("auction_closing_date")
+  val auctionMultiItem  = r.param("auction_multi_item")
+  val auctionBuyerId  = r.param("auction_buyer_id")
+}
+
+
 
 /**
  * As the HTTP Commons HttpClient class is by definition very mutable, we
@@ -355,7 +436,7 @@ trait BasePaypalTrait extends LiftRules.DispatchPF {
 
   def connection: PaypalConnection = PaypalSSL
 
-    def isDefinedAt(r: Req) = NamedPF.isDefinedAt(r, dispatch)
+  def isDefinedAt(r: Req) = NamedPF.isDefinedAt(r, dispatch)
 
   def apply(r: Req) = NamedPF(r, dispatch)
 }
@@ -369,7 +450,7 @@ trait PaypalPDT extends BasePaypalTrait {
   override def dispatch: List[LiftRules.DispatchPF] = {
     val nf: LiftRules.DispatchPF = NamedPF("Default PDT") {
       case r @ Req(RootPath :: PDTPath :: Nil, "", _) =>
-	r.params // force the lazy value to be evaluated
+      r.params // force the lazy value to be evaluated
       processPDT(r) _
     }
 
@@ -419,7 +500,7 @@ trait PaypalIPN extends BasePaypalTrait {
   override def dispatch: List[LiftRules.DispatchPF] = {
     val nf: LiftRules.DispatchPF = NamedPF("Default PaypalIPN") {
       case r @ Req(RootPath :: IPNPath :: Nil, "", PostRequest) =>
-	r.params // force the lazy value to be evaluated
+      r.params // force the lazy value to be evaluated
       requestQueue ! IPNRequest(r, 0, millis)
       defaultResponse _
     }
@@ -427,7 +508,7 @@ trait PaypalIPN extends BasePaypalTrait {
     super.dispatch ::: List(nf)
   }
 
-  def actions:  PartialFunction[(PaypalTransactionStatus.Value, PayPalInfo, Req), Unit]
+  def actions: PartialFunction[(Box[PaypalTransactionStatus.Value], PayPalInfo, Req), Unit]
 
   protected case class IPNRequest(r: Req, cnt: Int, when: Long)
   protected case object PingMe
@@ -448,16 +529,12 @@ trait PaypalIPN extends BasePaypalTrait {
       loop {
         react {
           case PingMe => ActorPing.schedule(this, PingMe, 10 seconds)
-
           case IPNRequest(r, cnt, _) if cnt > MaxRetry => // discard the transaction
-
           case IPNRequest(r, cnt, when) if when <= millis =>
             tryo {
               val resp = PaypalIPN(r, mode, connection)
-
-              for (info <-  buildInfo(resp, r);
-                   stat <- info.paymentStatus) yield {
-                actions((stat, info, r))
+              for (info <-  buildInfo(resp, r)) yield {
+                actions((info.paymentStatus, info, r))
                 true
               }
             } match {
@@ -473,84 +550,4 @@ trait PaypalIPN extends BasePaypalTrait {
   }
   requestQueue.start
   requestQueue ! PingMe
-}
-
-/**
- * A paramater set that takes request paramaters (from Req) and assigns them
- * to properties of this class
- *
- * @param params The paramaters from the incooming request
- */
-class PayPalInfo(val params: HasParams) {
-  private val r = params
-  val itemName = r.param("item_name")
-  val business = r.param("business")
-  val itemNumber = r.param("item_number")
-  val paymentStatus: Box[PaypalTransactionStatus.Value] = r.param("payment_status").flatMap(PaypalTransactionStatus.find)
-  val mcGross = r.param("mc_gross")
-  val paymentCurrency = r.param("mc_currency")
-  val txnId = r.param("txn_id")
-  val receiverEmail = r.param("receiver_email")
-  val receiverId = r.param("receiver_id")
-  val quantity = r.param("quantity")
-  val numCartItems = r.param("num_cart_items")
-  val paymentDate = r.param("payment_date")
-  val firstName = r.param("first_name")
-  val lastName = r.param("last_name")
-  val paymentType = r.param("payment_type")
-  val paymentGross = r.param("payment_gross")
-  val paymentFee = r.param("payment_fee")
-  val settleAmount = r.param("settle_amount")
-  val memo = r.param("memo")
-  val payerEmail = r.param("payer_email")
-  val txnType = r.param("txn_type")
-  val payerStatus = r.param("payer_status")
-  val addressStreet = r.param("address_street")
-  val addressCity = r.param("address_city")
-  val addressState = r.param("address_state")
-  val addressZip = r.param("address_zip")
-  val addressCountry = r.param("address_country")
-  val addressStatus = r.param("address_status")
-  val tax = r.param("tax")
-  val optionName1 = r.param("option_name1")
-  val optionSelection1 = r.param("option_selection1")
-  val optionName2 = r.param("option_name2")
-  val optionSelection2 = r.param("option_selection2")
-  val forAuction = r.param("for_auction")
-  val invoice = r.param("invoice")
-  val custom = r.param("custom")
-  val notifyVersion = r.param("notify_version")
-  val verifySign = r.param("verify_sign")
-  val payerBusinessName = r.param("payer_business_name")
-  val payerId =r.param("payer_id")
-  val mcCurrency = r.param("mc_currency")
-  val mcFee = r.param("mc_fee")
-  val exchangeRate = r.param("exchange_rate")
-  val settleCurrency  = r.param("settle_currency")
-  val parentTxnId  = r.param("parent_txn_id")
-  val pendingReason = r.param("pending_reason")
-  val reasonCode = r.param("reason_code")
-  val subscrId = r.param("subscr_id")
-  val subscrDate = r.param("subscr_date")
-  val subscrEffective  = r.param("subscr_effective")
-  val period1 = r.param("period1")
-  val period2 = r.param("period2")
-  val period3 = r.param("period3")
-  val amount = r.param("amt")
-  val amount1 = r.param("amount1")
-  val amount2 = r.param("amount2")
-  val amount3 = r.param("amount3")
-  val mcAmount1 = r.param("mc_amount1")
-  val mcAmount2 = r.param("mc_amount2")
-  val mcAmount3 = r.param("mcamount3")
-  val recurring = r.param("recurring")
-  val reattempt = r.param("reattempt")
-  val retryAt = r.param("retry_at")
-  val recurTimes = r.param("recur_times")
-  val username = r.param("username")
-  val password = r.param("password")
-
-  val auctionClosingDate  = r.param("auction_closing_date")
-  val auctionMultiItem  = r.param("auction_multi_item")
-  val auctionBuyerId  = r.param("auction_buyer_id")
 }

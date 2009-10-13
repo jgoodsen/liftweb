@@ -413,7 +413,12 @@ object JE {
 }
 
 trait HtmlFixer {
-  def fixHtml(uid: String, content: NodeSeq): String =
+  /**
+  * Super important... call fixHtml at instance creation time and only once
+  * This method must be run in the context of the thing creating the XHTML
+  * to capture the bound functions
+  */
+  protected def fixHtml(uid: String, content: NodeSeq): String =
   AltXML.toXML(Group(S.session.map(s => s.fixHtml(s.processSurroundAndInclude("JS SetHTML id: "+uid, content))).openOr(content)),
                false, true, S.ieMode).encJs
 

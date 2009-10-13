@@ -12,7 +12,7 @@ object PrintingSpec extends Specification with JValueGen with ScalaCheck {
   import scala.text.Document
 
   "rendering does not change semantics" in {
-    val rendering = (json: Document) => parse(JsonDSL.pretty(json)) == parse(JsonDSL.compact(json))
+    val rendering = (json: Document) => parse(Printer.pretty(json)) == parse(Printer.compact(json))
     forAll(rendering) must pass
   }
 
