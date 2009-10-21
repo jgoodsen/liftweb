@@ -31,7 +31,7 @@ import S._
  * Just like MappedString, except it's defaultValue is "" and the length is auto-cropped to
  * fit in the column
  */
-class MappedPoliteString[T <: Mapper[T]](towner: T, theMaxLen: Int) extends MappedString[T](towner, theMaxLen) {
+abstract class MappedPoliteString[T <: Mapper[T]](towner: T, theMaxLen: Int) extends MappedString[T](towner, theMaxLen) {
   override def defaultValue = ""
   override protected def setFilter = crop _ :: super.setFilter
 }
@@ -48,7 +48,7 @@ trait ValidateLength extends MixableMappedField {
 
 }
 
-class MappedString[T<:Mapper[T]](val fieldOwner: T,val maxLen: Int) extends MappedField[String, T] {
+abstract class MappedString[T<:Mapper[T]](val fieldOwner: T,val maxLen: Int) extends MappedField[String, T] {
   private val data: FatLazy[String] =  FatLazy(defaultValue) // defaultValue
   private val orgData: FatLazy[String] =  FatLazy(defaultValue) // defaultValue
 

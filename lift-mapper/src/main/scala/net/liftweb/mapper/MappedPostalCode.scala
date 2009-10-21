@@ -69,7 +69,7 @@ object Countries extends Enumeration(1) {
   }
 }
 
-class MappedLocale[T <: Mapper[T]](owner: T) extends MappedString[T](owner, 16) {
+abstract class MappedLocale[T <: Mapper[T]](owner: T) extends MappedString[T](owner, 16) {
   override def defaultValue = Locale.getDefault.toString
 
   def isAsLocale: Locale = Locale.getAvailableLocales.filter(_.toString == is).toList match {
@@ -84,7 +84,7 @@ class MappedLocale[T <: Mapper[T]](owner: T) extends MappedString[T](owner, 16) 
                     Full(this.is), set) % ("id" -> fieldId))
 }
 
-class MappedTimeZone[T <: Mapper[T]](owner: T) extends MappedString[T](owner, 32) {
+abstract class MappedTimeZone[T <: Mapper[T]](owner: T) extends MappedString[T](owner, 32) {
   override def defaultValue = TimeZone.getDefault.getID
 
   def isAsTimeZone: TimeZone = TimeZone.getTimeZone(is) match {
@@ -105,11 +105,11 @@ object MappedTimeZone {
   sort(_ < _).map(tz => (tz, tz))
 }
 
-class MappedCountry[T <: Mapper[T]](owner: T) extends MappedEnum[T, Countries.type](owner, Countries) {
+abstract class MappedCountry[T <: Mapper[T]](owner: T) extends MappedEnum[T, Countries.type](owner, Countries) {
 
 }
 
-class MappedPostalCode[T <: Mapper[T]](owner: T, country: MappedCountry[T]) extends MappedString[T](owner, 32) {
+abstract class MappedPostalCode[T <: Mapper[T]](owner: T, country: MappedCountry[T]) extends MappedString[T](owner, 32) {
   override def setFilter = notNull _ :: toUpper _ :: trim _ :: super.setFilter
 
   private def genericCheck(zip: String): List[FieldError] = {

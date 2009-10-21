@@ -22,7 +22,7 @@ import _root_.java.util.Date
 import _root_.net.liftweb.util._
 import _root_.net.liftweb.http.js._
 
-class MappedBinary[T<:Mapper[T]](val fieldOwner: T) extends MappedField[Array[Byte], T] {
+abstract class MappedBinary[T<:Mapper[T]](val fieldOwner: T) extends MappedField[Array[Byte], T] {
   private val data : FatLazy[Array[Byte]] =  FatLazy(defaultValue)
   private val orgData: FatLazy[Array[Byte]] = FatLazy(defaultValue)
 
@@ -89,7 +89,7 @@ class MappedBinary[T<:Mapper[T]](val fieldOwner: T) extends MappedField[Array[By
   def fieldCreatorString(dbType: DriverType, colName: String): String = colName + " " + dbType.binaryColumnType + notNullAppender()
 }
 
-class MappedText[T<:Mapper[T]](val fieldOwner: T) extends MappedField[String, T] {
+abstract class MappedText[T<:Mapper[T]](val fieldOwner: T) extends MappedField[String, T] {
   private val data : FatLazy[String] =  FatLazy(defaultValue)
   private val orgData: FatLazy[String] = FatLazy(defaultValue)
 
@@ -173,7 +173,7 @@ class MappedText[T<:Mapper[T]](val fieldOwner: T) extends MappedField[String, T]
   def fieldCreatorString(dbType: DriverType, colName: String): String = colName + " " + dbType.clobColumnType + notNullAppender()
 }
 
-class MappedFakeClob[T<:Mapper[T]](val fieldOwner: T) extends MappedField[String, T] {
+abstract class MappedFakeClob[T<:Mapper[T]](val fieldOwner: T) extends MappedField[String, T] {
   private val data : FatLazy[String] =  FatLazy(defaultValue)
   private val orgData: FatLazy[String] = FatLazy(defaultValue)
 

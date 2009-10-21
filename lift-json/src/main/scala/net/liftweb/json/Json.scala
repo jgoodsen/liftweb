@@ -127,8 +127,8 @@ object JsonAST {
   }
 
   case object JNothing extends JValue {
-    type Values = Nothing
-    def values = error("nothing contains no values")
+    type Values = None.type
+    def values = None
   }
   case object JNull extends JValue {
     type Values = Null

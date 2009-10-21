@@ -27,7 +27,7 @@ object MappedEmail {
   def validEmailAddr_?(email: String): Boolean = emailPattern.matcher(email).matches
 }
 
-class MappedEmail[T<:Mapper[T]](owner: T, maxLen: Int) extends MappedString[T](owner, maxLen) {
+abstract class MappedEmail[T<:Mapper[T]](owner: T, maxLen: Int) extends MappedString[T](owner, maxLen) {
 
   override def setFilter = notNull _ :: toLower _ :: trim _ :: super.setFilter
 

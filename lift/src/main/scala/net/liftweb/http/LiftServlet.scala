@@ -448,7 +448,7 @@ class LiftServlet {
     def fixHeaders(headers : List[(String, String)]) = headers map ((v) => v match {
         case ("Location", uri) => (v._1, (
               (for(u <- request;
-                   updated <- Full(u.contextPath + uri) if (uri.startsWith("/"));
+                   updated <- Full((if (!LiftRules.excludePathFromContextPathRewriting.vend(uri)) u.contextPath else "") + uri) if (uri.startsWith("/"));
                    f <- URLRewriter.rewriteFunc map (_(updated))) yield f) openOr uri
             ))
         case _ => v

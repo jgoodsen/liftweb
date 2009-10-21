@@ -1654,7 +1654,7 @@ object S extends HasParams {
   def addFunctionMap(name: String, value: AFuncHolder) = _functionMap.value += (name -> value)
 
   private def booster(lst: List[String], func: String => Any): Unit = lst.foreach(v => func(v))
-  //TODO : continue documentation here
+
   /**
    * Decorates an URL with jsessionid parameter in case cookies are disabled from the container. Also
    * it appends general purpose parameters defined by LiftRules.urlDecorate

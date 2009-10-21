@@ -37,7 +37,7 @@ import _root_.scala.xml.{NodeSeq}
  * @see MappedDateTime
  * @see MappedTime
  */
-class MappedDate[T<:Mapper[T]](val fieldOwner: T) extends MappedField[Date, T] {
+abstract class MappedDate[T<:Mapper[T]](val fieldOwner: T) extends MappedField[Date, T] {
   private val data = FatLazy(defaultValue)
   private val orgData = FatLazy(defaultValue)
 

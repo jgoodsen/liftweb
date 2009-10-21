@@ -586,10 +586,11 @@ object LiftRules extends Factory {
   /**
    * Computes the Comet path by adding additional tokens on top of cometPath
    */
-  var calcCometPath: String => JsExp = prefix => Str(prefix + "/" + cometPath + "/") +
-  JsRaw("Math.floor(Math.random() * 100000000000)") +
-  Str(S.session.map(s => "/"+s.uniqueId) openOr "")
-
+  var calcCometPath: String => JsExp = prefix => { 
+    Str(prefix + "/" + cometPath + "/") +
+    JsRaw("Math.floor(Math.random() * 100000000000)") +
+    Str(S.session.map(s => S.encodeURL("/"+s.uniqueId)) openOr "")
+  }
   /**
    * The default way of calculating the context path
    */

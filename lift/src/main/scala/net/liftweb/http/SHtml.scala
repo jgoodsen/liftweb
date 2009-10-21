@@ -523,7 +523,7 @@ object SHtml {
   def link(to: String, func: () => Any, body: NodeSeq,
            attrs: (String, String)*): Elem = {
     fmapFunc((a: List[String]) => {func(); true})(key =>
-      attrs.foldLeft(<a href={to+"?"+key+"=_"}>{body}</a>)(_ % _))
+      attrs.foldLeft(<a href={to+(if (to.indexOf("?") >= 0) "&" else "?")+key+"=_"}>{body}</a>)(_ % _))
   }
 
   private def makeFormElement(name: String, func: AFuncHolder,

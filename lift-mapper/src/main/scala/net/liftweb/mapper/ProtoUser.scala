@@ -324,17 +324,17 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser[ModelType]] extends KeyedMeta
   def signupMailBody(user: ModelType, validationLink: String) = {
     (<html>
         <head>
-          <title>Sign Up Confirmation</title>
+          <title>{S.??("sign.up.confirmation")}</title>
         </head>
         <body>
-          <p>Dear {user.firstName},
+          <p>{S.??("dear")} {user.firstName},
             <br/>
             <br/>
-            Click on this link to complete signup
+            {S.??("sign.up.validation.link")}
             <br/><a href={validationLink}>{validationLink}</a>
             <br/>
             <br/>
-            Thanks
+            {S.??("thank.you")}
           </p>
         </body>
      </html>)
@@ -515,7 +515,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser[ModelType]] extends KeyedMeta
   def lostPassword = {
     bind("user", lostPasswordXhtml,
          "email" -> SHtml.text("", sendPasswordReset _),
-         "submit" -> <input type="Submit" value={S.??("send.it")} />)
+         "submit" -> <input type="submit" value={S.??("send.it")} />)
   }
 
   def passwordResetXhtml = {
@@ -546,7 +546,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser[ModelType]] extends KeyedMeta
            "pwd" -> SHtml.password_*("",(p: List[String]) =>
           user.password.setList(p)),
            "submit" -> SHtml.submit(S.??("set.password"), finishSet _))
-    case _ => S.error(S.??("pasword.link.invalid")); S.redirectTo(homePage)
+    case _ => S.error(S.??("password.link.invalid")); S.redirectTo(homePage)
   }
 
   def changePasswordXhtml = {
@@ -570,7 +570,7 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser[ModelType]] extends KeyedMeta
       else {
         user.password.setFromAny(newPassword)
         user.validate match {
-          case Nil => user.save; S.notice(S.??("pasword.changed")); S.redirectTo(homePage)
+          case Nil => user.save; S.notice(S.??("password.changed")); S.redirectTo(homePage)
           case xs => S.error(xs)
         }
       }

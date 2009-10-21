@@ -415,4 +415,18 @@ trait ClassHelpers { self: ControlHelpers =>
         }
     }
   }
+
+  def classHierarchy(in: Class[_]): List[Class[_]] = {
+    import scala.collection.mutable._
+    val ret: ListBuffer[Class[_]] = new ListBuffer
+    var c: Class[_] = in
+    ret += c
+    while (c.getSuperclass != null) {
+      val sc = c.getSuperclass
+      ret += sc
+      c = sc
+    }
+    
+    ret.toList
+  }
 }

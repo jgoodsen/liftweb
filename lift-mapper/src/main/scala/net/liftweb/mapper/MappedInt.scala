@@ -27,7 +27,7 @@ import _root_.net.liftweb.http.jquery.{JqSHtml}
 import _root_.scala.xml.NodeSeq
 import js._
 
-class MappedEnum[T<:Mapper[T], ENUM <: Enumeration](val fieldOwner: T, val enum: ENUM) extends MappedField[ENUM#Value, T] {
+abstract class MappedEnum[T<:Mapper[T], ENUM <: Enumeration](val fieldOwner: T, val enum: ENUM) extends MappedField[ENUM#Value, T] {
   private var data: ENUM#Value = defaultValue
   private var orgData: ENUM#Value = defaultValue
   def defaultValue: ENUM#Value = enum.elements.next
@@ -134,7 +134,7 @@ class MappedEnum[T<:Mapper[T], ENUM <: Enumeration](val fieldOwner: T, val enum:
                                 v => this.set(fromInt(v))))
 }
 
-class MappedIntIndex[T<:Mapper[T]](owner : T) extends MappedInt[T](owner) with IndexedField[Int] {
+abstract class MappedIntIndex[T<:Mapper[T]](owner : T) extends MappedInt[T](owner) with IndexedField[Int] {
 
   override def writePermission_? = false // not writable
 
@@ -184,7 +184,7 @@ class MappedIntIndex[T<:Mapper[T]](owner : T) extends MappedInt[T](owner) with I
 }
 
 
-class MappedInt[T<:Mapper[T]](val fieldOwner: T) extends MappedField[Int, T] {
+abstract class MappedInt[T<:Mapper[T]](val fieldOwner: T) extends MappedField[Int, T] {
   private var data: Int = defaultValue
   private var orgData: Int = defaultValue
 

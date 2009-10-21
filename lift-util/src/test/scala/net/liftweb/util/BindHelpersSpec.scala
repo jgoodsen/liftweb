@@ -107,6 +107,39 @@ object BindHelpersSpec extends Specification with BindHelpers {
     }
   }
 
+  "The bind helpers should deal correctly with <select>" should {
+    "do <select> correctly" in {
+      val xhtml = <select name="days"> <stats:options/> </select>
+
+      def options(xhtml: NodeSeq): NodeSeq = {
+        <option value="7">week</option><option value="30">month</option> }
+
+      val res = bind("stats", xhtml, "options" -> options _)
+
+      res must ==/(<select name="days"><option value="7">week</option><option value="30">month</option></select>)
+    }
+
+    "do <input> correctly" in {
+      val xhtml = <input name="days"> <stats:options/> </input>
+
+      def options(xhtml: NodeSeq): NodeSeq = {
+        <option value="7">week</option><option value="30">month</option> }
+
+      val res = bind("stats", xhtml, "options" -> options _)
+
+      res must ==/(<input name="days"><option value="7">week</option><option value="30">month</option></input>)
+    }
+
+    "do <div> correctly" in {
+      val xhtml = <div> <stats:options/> </div>
+
+      def options(xhtml: NodeSeq): NodeSeq = {
+        <option value="7">week</option><option value="30">month</option> }
+
+      val res = bind("stats", xhtml, "options" -> options _)
+      res must ==/(<div><option value="7">week</option><option value="30">month</option></div>)
+    }
+  }
 
 
   "the bindByName bind(namespace, NodeSeq, BindParams*) function" should {

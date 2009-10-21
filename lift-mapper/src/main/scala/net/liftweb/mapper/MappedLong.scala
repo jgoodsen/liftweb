@@ -26,7 +26,7 @@ import _root_.net.liftweb.http.{S, SHtml}
 import _root_.net.liftweb.http.js._
 import S._
 
-class MappedLongForeignKey[T<:Mapper[T],O<:KeyedMapper[Long, O]](theOwner: T, foreign: => KeyedMetaMapper[Long, O])
+abstract class MappedLongForeignKey[T<:Mapper[T],O<:KeyedMapper[Long, O]](theOwner: T, foreign: => KeyedMetaMapper[Long, O])
 extends MappedLong[T](theOwner) with MappedForeignKey[Long,T,O] with BaseForeignKey {
   def defined_? = /*i_get_! != defaultValue &&*/ i_is_! > 0L
 
@@ -79,7 +79,7 @@ extends MappedLong[T](theOwner) with MappedForeignKey[Long,T,O] with BaseForeign
 
 }
 
-class MappedLongIndex[T<:Mapper[T]](theOwner: T) extends MappedLong[T](theOwner) with IndexedField[Long] {
+abstract class MappedLongIndex[T<:Mapper[T]](theOwner: T) extends MappedLong[T](theOwner) with IndexedField[Long] {
 
   override def writePermission_? = false // not writable
 
@@ -120,7 +120,7 @@ class MappedLongIndex[T<:Mapper[T]](theOwner: T) extends MappedLong[T](theOwner)
 
 }
 
-class MappedEnumList[T<:Mapper[T], ENUM <: Enumeration](val fieldOwner: T, val enum: ENUM) extends MappedField[Seq[ENUM#Value], T] {
+abstract class MappedEnumList[T<:Mapper[T], ENUM <: Enumeration](val fieldOwner: T, val enum: ENUM) extends MappedField[Seq[ENUM#Value], T] {
   private var data: Seq[ENUM#Value] = defaultValue
   private var orgData: Seq[ENUM#Value] = defaultValue
 
@@ -221,7 +221,7 @@ trait DefaultMillis extends TypedField[Long] {
 }
 
 
-class MappedNullableLong[T<:Mapper[T]](val fieldOwner: T) extends MappedNullableField[Long, T] {
+abstract class MappedNullableLong[T<:Mapper[T]](val fieldOwner: T) extends MappedNullableField[Long, T] {
   private var data: Box[Long] = defaultValue
   private var orgData: Box[Long] = defaultValue
 
@@ -308,9 +308,7 @@ class MappedNullableLong[T<:Mapper[T]](val fieldOwner: T) extends MappedNullable
   def fieldCreatorString(dbType: DriverType, colName: String): String = colName + " " + dbType.longColumnType + notNullAppender()
 }
 
-
-
-class MappedLong[T<:Mapper[T]](val fieldOwner: T) extends MappedField[Long, T] {
+abstract class MappedLong[T<:Mapper[T]](val fieldOwner: T) extends MappedField[Long, T] {
   private var data: Long = defaultValue
   private var orgData: Long = defaultValue
 

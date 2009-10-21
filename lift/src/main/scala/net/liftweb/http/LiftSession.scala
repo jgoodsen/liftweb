@@ -262,6 +262,12 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
   private [http] var highLevelSessionDispatcher = new HashMap[String, LiftRules.DispatchPF]()
   private [http] var sessionRewriter = new HashMap[String, LiftRules.RewritePF]()
 
+
+  private object snippetMap extends RequestVar[Map[String, AnyRef]](Map())
+  private[http] object deferredSnippets extends RequestVar[HashMap[String, Box[NodeSeq]]](new HashMap)
+  private object cometSetup extends RequestVar[List[((Box[String], Box[String]), Any)]](Nil)
+
+
   private[http] def startSession(): Unit = {
     _running_? = true
     for (sess <- httpSession) {
@@ -667,8 +673,6 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
     }
   }
 
-  private object snippetMap extends RequestVar[Map[String, AnyRef]](Map())
-
   private def findSnippetClass(name: String): Box[Class[AnyRef]] = {
     if (name == null) Empty
     else findClass(name, LiftRules.buildPackage("snippet") ::: ("lift.app.snippet" :: "net.liftweb.builtin.snippet" :: Nil))
@@ -916,7 +920,6 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
 
   private def asNodeSeq(in: Seq[Node]): NodeSeq = in
 
-  private[http] object deferredSnippets extends RequestVar[HashMap[String, Box[NodeSeq]]](new HashMap)
 
   private class DeferredProcessor extends SpecializedLiftActor[ProcessSnippet] {
     protected def messageHandler = {
@@ -1039,8 +1042,6 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
   def findComet(theType: String): List[CometActor] = synchronized {
     asyncComponents.elements.filter{case ((Full(name), _), _) => name == theType case _ => false}.toList.map{case (_, value) => value}
   }
-
-  private object cometSetup extends RequestVar[List[((Box[String], Box[String]), Any)]](Nil)
 
   /**
    * Allows you to send messages to a CometActor that may or may not be set up yet

@@ -31,7 +31,7 @@ object MappedPassword {
   val blankPw = "*******"
 }
 
-class MappedPassword[T<:Mapper[T]](val fieldOwner: T)
+abstract class MappedPassword[T<:Mapper[T]](val fieldOwner: T)
 extends MappedField[String, T] {
   override def dbColumnCount = 2
   def dbFieldClass = classOf[String]

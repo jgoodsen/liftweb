@@ -1,7 +1,7 @@
 package net.liftweb.mapper
 
 /*
- * Copyright 2006-2008 WorldWide Conferencing, LLC
+ * Copyright 2006-2009 WorldWide Conferencing, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import _root_.net.liftweb.http.{S, SHtml}
 import _root_.scala.xml.{Elem, NodeSeq}
 import _root_.net.liftweb.http.js._
 
-class MappedUniqueId[T<:Mapper[T]](override val fieldOwner: T, override val maxLen: Int) extends MappedString[T](fieldOwner, maxLen) {
+abstract class MappedUniqueId[T<:Mapper[T]](override val fieldOwner: T, override val maxLen: Int) extends MappedString[T](fieldOwner, maxLen) {
   override def writePermission_? = false
   override lazy val defaultValue = randomString(maxLen)
 
@@ -33,7 +33,7 @@ class MappedUniqueId[T<:Mapper[T]](override val fieldOwner: T, override val maxL
 /**
   * A field that holds the birth year for the user
   */
-class MappedBirthYear[T <: Mapper[T]](owner: T, minAge: Int) extends MappedInt[T](owner) {
+abstract class MappedBirthYear[T <: Mapper[T]](owner: T, minAge: Int) extends MappedInt[T](owner) {
   override def defaultValue = year(timeNow) - minAge
 
   override def _toForm: Box[NodeSeq] = {
@@ -47,7 +47,7 @@ class MappedBirthYear[T <: Mapper[T]](owner: T, minAge: Int) extends MappedInt[T
   }
 }
 
-class MappedGender[T <: Mapper[T]](owner: T) extends MappedEnum(owner, Genders) {
+abstract class MappedGender[T <: Mapper[T]](owner: T) extends MappedEnum(owner, Genders) {
   override def defaultValue = Genders.Male
 }
 
@@ -63,7 +63,7 @@ object Genders extends Enumeration {
   }
 }
 
-class MappedStringIndex[T<:Mapper[T]](override val fieldOwner: T, override val maxLen: Int) extends MappedUniqueId[T](fieldOwner, maxLen) with IndexedField[String] {
+abstract class MappedStringIndex[T<:Mapper[T]](override val fieldOwner: T, override val maxLen: Int) extends MappedUniqueId[T](fieldOwner, maxLen) with IndexedField[String] {
 
   override def writePermission_? = false // not writable
 
@@ -85,7 +85,7 @@ class MappedStringIndex[T<:Mapper[T]](override val fieldOwner: T, override val m
 }
 
 
-class MappedStringForeignKey[T<:Mapper[T],O<:KeyedMapper[String, O]](override val fieldOwner: T, foreign: => KeyedMetaMapper[String, O],override val maxLen: Int)
+abstract class MappedStringForeignKey[T<:Mapper[T],O<:KeyedMapper[String, O]](override val fieldOwner: T, foreign: => KeyedMetaMapper[String, O],override val maxLen: Int)
 extends MappedString[T](fieldOwner, maxLen) with MappedForeignKey[String,T,O] with BaseForeignKey {
   def defined_? = i_is_! ne null
 

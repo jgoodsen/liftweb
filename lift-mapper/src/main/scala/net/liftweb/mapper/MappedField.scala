@@ -424,6 +424,11 @@ trait MappedField[FieldType <: Any,OwnerType <: Mapper[OwnerType]] extends Typed
     fieldOwner
   }
 
+  /**
+  * The unique field id is the field name and the mapper name
+  */
+  override def uniqueFieldId: Box[String] =
+  Full(fieldOwner.getSingleton.dbTableName+"_"+name)
 
   /**
    * Set the field to the value

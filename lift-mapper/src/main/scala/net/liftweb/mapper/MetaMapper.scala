@@ -546,10 +546,10 @@ trait MetaMapper[A<:Mapper[A]] extends BaseMetaMapper with Mapper[A] {
 
     case _ => toSave.persisted_?
       /*
-      indexMap match {
-        case Full(im) => (for (indF <- indexedField(toSave)) yield (indF.dbIndexFieldIndicatesSaved_?)).openOr(true)
-        case _ => false
-      }*/
+       indexMap match {
+       case Full(im) => (for (indF <- indexedField(toSave)) yield (indF.dbIndexFieldIndicatesSaved_?)).openOr(true)
+       case _ => false
+       }*/
   }
 
 
@@ -884,9 +884,85 @@ trait MetaMapper[A<:Mapper[A]] extends BaseMetaMapper with Mapper[A] {
     def isMappedField(m: Method) = classOf[MappedField[Nothing, A]].isAssignableFrom(m.getReturnType)
     def isLifecycle(m: Method) = classOf[LifecycleCallbacks].isAssignableFrom(m.getReturnType)
 
-    mappedCallbacks = for (v <- this.getClass.getSuperclass.getMethods.toList if isMagicObject(v) && isLifecycle(v)) yield (v.getName, v)
+    import java.lang.reflect.Modifier
 
-    for (v <- this.getClass.getSuperclass.getMethods  if isMagicObject(v) && isMappedField(v)) {
+  /**
+  * Find the magic mapper fields on the superclass
+  */
+    def findMagicFields(onMagic: Mapper[A], staringClass: Class[_]): List[Method] = {
+
+    // If a class name ends in $module, it's a subclass created for scala object instances
+      def deMod(in: String): String =
+      if (in.endsWith("$module")) in.substring(0, in.length - 7)
+      else in
+
+    // find the magic fields for the given superclass
+      def findForClass(clz: Class[_]): List[Method] = clz match {
+        case null => Nil
+        case c =>
+          // get the fields
+          val fields = Map(c.getDeclaredFields.
+                           filter(f => Modifier.isPrivate(f.getModifiers)).
+                           filter(f => classOf[MappedField[_, _]].isAssignableFrom(f.getType)).
+                           map(f => (deMod(f.getName), f)) :_*)
+
+        // this method will find all the super classes and super-interfaces
+          def getAllSupers(clz: Class[_]): List[Class[_]] = clz match {
+            case null => Nil
+            case c =>
+              c :: c.getInterfaces.toList.flatMap(getAllSupers) :::
+              getAllSupers(c.getSuperclass)
+          }
+
+        // does the method return an actual instance of an actual class that's
+        // associated with this Mapper class
+          def validActualType(meth: Method): Boolean = {
+            try {
+              // invoke the method
+              meth.invoke(onMagic) match {
+                case null =>
+                  false
+                case inst =>
+                  // do we get a MappedField of some sort back?
+                  if (!classOf[MappedField[_, _]].isAssignableFrom(inst.getClass)) false
+                  else {
+                    // find out if the class name of the actual thing starts
+                    // with the name of this class or some superclass...
+                    // basically, is an inner class of this class
+                    getAllSupers(clz).find{
+                      c =>
+                      inst.getClass.getName.startsWith(c.getName)}.isDefined
+                  }
+              }
+
+            } catch {
+              case e =>
+                false
+            }
+          }
+
+        // find all the declared methods
+          val meths = c.getDeclaredMethods.toList.
+          filter(_.getParameterTypes.length == 0). // that take no parameters
+          filter(m => Modifier.isPublic(m.getModifiers)). // that are public
+          filter(m => fields.contains(m.getName) && // that are associated with private fields
+                 fields(m.getName).getType == m.getReturnType).
+          filter(validActualType) // and have a validated type
+
+          meths ::: findForClass(clz.getSuperclass)
+      }
+
+      val ret = findForClass(staringClass)
+
+      ret.removeDuplicates
+    }
+
+    val mapperAccessMethods = findMagicFields(this, this.getClass.getSuperclass)
+
+    mappedCallbacks = mapperAccessMethods.filter(isLifecycle).map(v => (v.getName, v))
+    // for (v <- this.getClass.getSuperclass.getMethods.toList if isMagicObject(v) && isLifecycle(v)) yield (v.getName, v)
+
+    for (v <- mapperAccessMethods) {
       v.invoke(this) match {
         case mf: MappedField[AnyRef, A] if !mf.ignoreField_? =>
           mf.setName_!(v.getName)

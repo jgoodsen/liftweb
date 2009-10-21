@@ -433,7 +433,7 @@ trait BindHelpers {
                   ns.calcValue(s.child)
               }
             }
-          case s : Elem if bindByNameType(s.label) && bindByNameTag(namespace, s) != "" => BindHelpers._currentNode.doWith(s) {
+          case s : Elem if bindByNameType(s.label) && (attrStr(s, "name").startsWith(namespace+":")) && bindByNameTag(namespace, s) != "" => BindHelpers._currentNode.doWith(s) {
               val tag = bindByNameTag(namespace, s)
               map.get(tag) match {
                 case None => nodeFailureXform.map(_(s)) openOr s
@@ -600,7 +600,9 @@ trait BindHelpers {
   private def bindByNameType(b: String) = b == "input" || b == "select" || b == "button" || b == "a"
 
   // allow bind by name eg - <input name="namespace:tag"/>
-  private def bindByNameTag(namespace: String, elem: Elem) = attrStr(elem, "name").replaceAll(namespace+":","")
+  private def bindByNameTag(namespace: String, elem: Elem) = 
+  attrStr(elem, "name").replaceAll(namespace+":","")
+  
 
   // mixin what comes from xhtml with what is programatically added
   private def bindByNameMixIn(bindParam: BindParam, s: Elem): NodeSeq = {

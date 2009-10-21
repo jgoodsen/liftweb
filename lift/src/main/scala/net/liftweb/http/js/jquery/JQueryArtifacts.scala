@@ -55,7 +55,7 @@ object JQueryArtifacts extends JSArtifacts {
   def ajax(data: AjaxInfo): String = {
     "jQuery.ajax(" + toJson(data, S.contextPath,
                             prefix =>
-                            JsRaw(S.encodeURL(prefix + "/" +LiftRules.ajaxPath + "/").encJs))+");"
+                            JsRaw("liftAjax.addPageName(" + S.encodeURL(prefix + "/" +LiftRules.ajaxPath + "/").encJs + ")"))+");"
   }
 
   def comet(data: AjaxInfo): String = {
@@ -71,7 +71,7 @@ object JQueryArtifacts extends JSArtifacts {
   }
 
   private def toJson(info: AjaxInfo, server: String, path: String => JsExp): String =
-  (("url : liftAjax.addPageName(" + path(server).toJsCmd + ")" ) ::
+  (("url : " + path(server).toJsCmd) ::
    "data : " + info.data.toJsCmd ::
    ("type : " + info.action.encJs) ::
    ("dataType : " + info.dataType.encJs) ::

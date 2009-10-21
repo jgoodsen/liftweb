@@ -169,6 +169,35 @@ object JE {
       if (then.isEmpty) "" else then.mkString(".", ".", "")
     )
   }
+  
+  /**
+   * Gives the parent node of the node denominated by the id
+   * 
+   * @param id - the id of the node
+   */
+  case class ParentOf(id: String) extends JsExp {
+    def toJsCmd = (ElemById(id) ~> Parent).toJsCmd 
+  }
+
+  /**
+   * Replaces the node having the provided id with the markup given by node
+   * 
+   * @param id - the id of the node that will be replaces
+   * @param node - the new node
+   */
+  case class Replace(id: String, node: NodeSeq) extends JsExp {
+    def toJsCmd = {
+      val funcName = "f_" + Helpers.nextFuncName
+      val toBeReplaced = "v_" + Helpers.nextFuncName
+      
+      (JsCmds.JsCrVar(funcName, Jx(node).toJs) & 
+       JsCmds.JsCrVar(toBeReplaced, ElemById(id)) &
+       JE.JsRaw(toBeReplaced + ".parentNode.insertBefore(" + funcName + ", " +  toBeReplaced +");").cmd &
+       JE.JsRaw(toBeReplaced + ".parentNode.removeChild(" + toBeReplaced +");").cmd
+       ).toJsCmd
+      }
+  }
+
 
   object LjSwappable {
     def apply(visible: JsExp, hidden: JsExp): JxBase = {
@@ -334,6 +363,10 @@ object JE {
     def toJsCmd = "id"
   }
 
+  case object Parent extends JsMethod {
+    def toJsCmd = "parentNode"
+  }
+
   case object Style extends JsMethod {
     def toJsCmd = "style"
   }
@@ -453,7 +486,6 @@ object JsCmds {
   case class SetHtml(uid: String, content: NodeSeq) extends JsCmd {
     def toJsCmd = LiftRules.jsArtifacts.setHtml(uid, content).toJsCmd
   }
-
 
   /**
    * Makes the parameter the selected HTML element on load of the page

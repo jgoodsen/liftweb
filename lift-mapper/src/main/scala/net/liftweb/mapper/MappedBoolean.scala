@@ -25,7 +25,7 @@ import _root_.net.liftweb.util._
 import _root_.net.liftweb.http.js._
 import _root_.scala.xml.NodeSeq
 
-class MappedBoolean[T<:Mapper[T]](val fieldOwner: T) extends MappedField[Boolean, T] {
+abstract class MappedBoolean[T<:Mapper[T]](val fieldOwner: T) extends MappedField[Boolean, T] {
   private var data : Box[Boolean] = Full(defaultValue)
   private var orgData: Box[Boolean] = Full(defaultValue)
 

@@ -39,7 +39,7 @@ object Form extends DispatchSnippet {
 
     val pre = S.attr.~("onsubmit").map(_.text + ";") getOrElse ""
 
-    val ajax: String = SHtml.makeAjaxCall(LiftRules.jsArtifacts.serialize(id)).toJsCmd + ";" + pre + "return false;"
+    val ajax: String = pre + SHtml.makeAjaxCall(LiftRules.jsArtifacts.serialize(id)).toJsCmd + ";" + "return false;"
 
 
     new UnprefixedAttribute("id", Text(id),
