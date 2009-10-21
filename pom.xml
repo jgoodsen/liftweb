@@ -5,7 +5,7 @@
   <artifactId>lift</artifactId>
   <packaging>pom</packaging>
   <name>Lift</name>
-  <version>1.1-scala2.7.7.RC1-SNAPSHOT</version>
+  <version>1.1-scala2.7.7.RC2-SNAPSHOT</version>
   <url>http://liftweb.net</url>
   <inceptionYear>2007</inceptionYear>
   <description>
@@ -168,7 +168,7 @@ Lift is a scala web framework.
     <url>http://hudson.scala-tools.org/job/Lift/</url>
   </ciManagement>
   <properties>
-    <scala.version>2.7.7.RC1</scala.version>
+    <scala.version>2.7.7.RC2</scala.version>
   </properties>
   <modules>
     <module>lift-json</module>
