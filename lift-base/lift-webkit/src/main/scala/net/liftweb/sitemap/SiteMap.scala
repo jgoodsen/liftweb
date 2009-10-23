@@ -24,13 +24,15 @@ import _root_.scala.xml.{NodeSeq, Text}
 
 class SiteMapException(msg: String) extends Exception(msg)
 
-case class SiteMap(globalParamFuncs: List[PartialFunction[Box[Req], Loc.LocParam]], kids: Menu*) extends HasKids  {
+case class SiteMap(globalParamFuncs: List[PartialFunction[Box[Req], Loc.AnyLocParam]], kids: Menu*) extends HasKids  {
   import SiteMap._
+
   private var locs: Map[String, Loc[_]] = Map.empty
 
   kids.foreach(_._parent = Full(this))
   kids.foreach(_.init(this))
   kids.foreach(_.validate)
+
   private[sitemap] def addLoc(in: Loc[_]) {
     val name = in.name
     if (locs.isDefinedAt(name))
@@ -39,21 +41,23 @@ case class SiteMap(globalParamFuncs: List[PartialFunction[Box[Req], Loc.LocParam
     else locs = locs + (name -> in.asInstanceOf[Loc[_]])
   }
 
-  def globalParams: List[Loc.LocParam] = {
+  def globalParams: List[Loc.AnyLocParam] = {
     val r = S.request
 
     globalParamFuncs.flatMap(f => if (f.isDefinedAt(r)) List(f(r)) else Nil)
   }
 
-  def findLoc(name: String): Box[Loc[_]] =
-  Box(locs.get(name))
+  def findLoc(name: String): Box[Loc[_]] = Box(locs.get(name))
 
-  def findLoc(req: Req): Box[Loc[_]] =
-  first(kids)(_.findLoc(req))
+  def findLoc(req: Req): Box[Loc[_]] = first(kids)(_.findLoc(req))
 
-  def locForGroup(group: String): Seq[Loc[_]] =
-  kids.flatMap(_.locForGroup(group)).filter(_.testAccess match {
-      case Left(true) => true case _ => false})
+  def locForGroup(group: String): Seq[Loc[_]] = {
+    kids.flatMap(_.locForGroup(group)).filter(
+      _.testAccess match {
+        case Left(true) => true case _ => false
+      }
+    )
+  }
 
   lazy val menus: List[Menu] = locs.values.map(_.menu).toList
 
@@ -67,9 +71,7 @@ case class SiteMap(globalParamFuncs: List[PartialFunction[Box[Req], Loc.LocParam
 }
 
 object SiteMap {
-  def findLoc(name: String): Box[Loc[_]] =
-  for (sm <- LiftRules.siteMap;
-       loc <- sm.findLoc(name)) yield loc
+  def findLoc(name: String): Box[Loc[_]] = for (sm <- LiftRules.siteMap; loc <- sm.findLoc(name)) yield loc
 
   def findAndTestLoc(name: String): Box[Loc[_]] =
   findLoc(name).flatMap(l => l.testAccess match {
@@ -77,26 +79,29 @@ object SiteMap {
       case _ => Empty
     })
 
-  def buildLink(name: String, text: NodeSeq): NodeSeq =
-  (for (loc <- findAndTestLoc(name).toList;
-       link <- loc.createDefaultLink)
-  yield <a href={link}>{
-      text match {
-        case x if x.text.length > 0 => x
-        case _ => loc.linkText openOr Text(loc.name)
-      }
-    }</a>).firstOption getOrElse NodeSeq.Empty
+  def buildLink(name: String, text: NodeSeq): NodeSeq = {
+    val options = for {
+        loc <- findAndTestLoc(name).toList
+        link <- loc.createDefaultLink
+      } yield {
+        val linkText = text match {
+          case x if x.text.length > 0 => x
+          case _ => loc.linkText openOr Text(loc.name)
+        }
+        <a href={link}>{linkText}</a>
+    }
 
-  def buildLink(name: String): NodeSeq =
-  buildLink(name, Nil)
+    options.firstOption getOrElse NodeSeq.Empty
+  }
+
+  def buildLink(name: String): NodeSeq = buildLink(name, Nil)
 
   def apply(kids: Menu *) = new SiteMap(Nil, kids :_*)
 }
 
 trait HasKids {
   def kids: Seq[Menu]
-  def buildUpperLines(pathAt: HasKids, actual: Menu, populate: List[MenuItem]): List[MenuItem]
-  = populate
+  def buildUpperLines(pathAt: HasKids, actual: Menu, populate: List[MenuItem]): List[MenuItem] = populate
 
   def isRoot_? = false
 

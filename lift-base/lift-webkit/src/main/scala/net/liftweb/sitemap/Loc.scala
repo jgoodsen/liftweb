@@ -27,15 +27,11 @@ import _root_.scala.xml.{NodeSeq, Text}
  * A menu location
  */
 trait Loc[T] {
-  type LocRewrite =  Box[PartialFunction[RewriteRequest, (RewriteResponse, T)]]
-
   def name: String
 
   def link: Loc.Link[T]
 
   def text: Loc.LinkText[T]
-
-  def params: List[Loc.LocParam]
 
   def overrideValue: Box[T] = Empty
 
@@ -45,35 +41,39 @@ trait Loc[T] {
 
   def defaultValue: Box[T]
 
+  def currentValue: Box[T] = overrideValue or requestValue.is or defaultValue
+
   def childValues: List[T] = Nil
 
-  def rewrite: LocRewrite = Empty
+  def params: List[Loc.LocParam[T]]
 
-  def placeHolder_? : Boolean = _placeHolder_?
+  def allParams: List[Loc.LocParam[T]] = params ::: siteMap.globalParams
 
   private lazy val _placeHolder_? = allParams.contains(Loc.PlaceHolder)
 
-  def hideIfNoKids_? = placeHolder_? || _hideIfNoKids_?
+  def placeHolder_? : Boolean = _placeHolder_?
 
   private lazy val _hideIfNoKids_? = allParams.contains(Loc.HideIfNoKids)
 
-  def allParams: List[Loc.LocParam] = params ::: siteMap.globalParams
+  def hideIfNoKids_? = placeHolder_? || _hideIfNoKids_?
 
   def siteMap: SiteMap = _menu.siteMap
 
-  def createDefaultLink: Option[NodeSeq] = (requestValue.is or defaultValue).flatMap(p => link.createLink(p)).toOption
+  def createDefaultLink: Option[NodeSeq] = currentValue.flatMap(p => link.createLink(p)).toOption
 
   def createLink(in: T): Option[NodeSeq] = link.createLink(in).toOption
 
   override def toString = "Loc("+name+", "+link+", "+text+", "+params+")"
 
+  type LocRewrite =  Box[PartialFunction[RewriteRequest, (RewriteResponse, T)]]
+
+  def rewrite: LocRewrite = Empty
+
   def rewritePF: Box[LiftRules.RewritePF] = rewrite.map(
     rw =>
     new NamedPartialFunction[RewriteRequest, RewriteResponse] {
       def functionName = rw match {
-        case rw: NamedPartialFunction[_, _] =>
-          // ugly code to avoid type erasure warning
-          rw.asInstanceOf[NamedPartialFunction[RewriteRequest, RewriteResponse]].functionName
+        case rw: NamedPartialFunction[_, _] => rw.functionName
         case _ => "Unnamed"
       }
 
@@ -128,22 +128,30 @@ trait Loc[T] {
     else Empty
   }
 
+  protected object accessTestRes extends RequestVar[Either[Boolean, Box[() => LiftResponse]]](_testAccess) {
+    override val __nameSalt = randomString(10)
+  }
+
   def testAccess: Either[Boolean, Box[() => LiftResponse]] = accessTestRes.is
 
   protected def _testAccess: Either[Boolean, Box[() => LiftResponse]] = {
-    def testParams(what: List[Loc.LocParam]): Either[Boolean, Box[() => LiftResponse]] = what match {
+    def testParams(what: List[Loc.LocParam[T]]): Either[Boolean, Box[() => LiftResponse]] = what match {
       case Nil => Left(true)
 
-      case Loc.If(test, msg) :: xs =>
-        if (!test()) Right(Full(msg))
-        else testParams(xs)
+      case Loc.If(test, msg) :: xs => if (!test()) Right(Full(msg)) else testParams(xs)
+      case Loc.IfValue(test, msg) :: xs => if (!test(currentValue)) Right(Full(msg)) else testParams(xs)
 
-      case Loc.Unless(test, msg) :: xs =>
-        if (test()) Right(Full(msg))
-        else testParams(xs)
+      case Loc.Unless(test, msg) :: xs => if (test()) Right(Full(msg)) else testParams(xs)
+      case Loc.UnlessValue(test, msg) :: xs => if (test(currentValue)) Right(Full(msg)) else testParams(xs)
 
       case Loc.TestAccess(func) :: xs =>
         func() match {
+          case Full(resp) => Right(Full(() => resp))
+          case _ => testParams(xs)
+        }
+
+      case Loc.TestValueAccess(func) :: xs =>
+        func(currentValue) match {
           case Full(resp) => Right(Full(() => resp))
           case _ => testParams(xs)
         }
@@ -157,12 +165,8 @@ trait Loc[T] {
     }
   }
 
-  protected object accessTestRes extends RequestVar[Either[Boolean, Box[() => LiftResponse]]](_testAccess) {
-    override val __nameSalt = randomString(10)
-  }
-
   def earlyResponse: Box[LiftResponse] = {
-    def early(what: List[Loc.LocParam]): Box[LiftResponse] = what match {
+    def early(what: List[Loc.LocParam[T]]): Box[LiftResponse] = what match {
       case Nil => Empty
 
       case Loc.EarlyResponse(func) :: xs =>
@@ -178,12 +182,12 @@ trait Loc[T] {
   }
 
   /**
-   * Is there a template assocaited with this Loc?
+   * The template assocaited with this Loc, if any.
    */
-  def template: Box[NodeSeq] = paramTemplate.map(_.template()) or calcTemplate
+  def template: Box[NodeSeq] = currentValue.flatMap(v => paramTemplate.map(_.template())) or calcTemplate
 
   /**
-   * A method that can be override to provide a template for this Loc
+   * A method that can be overridden to provide a template for this Loc
    */
   def calcTemplate: Box[NodeSeq] = Empty
 
@@ -191,27 +195,30 @@ trait Loc[T] {
    * Look for the Loc.Template in the param list
    */
   lazy val paramTemplate: Box[Loc.Template] = {
-    allParams.flatMap{case v: Loc.Template => Some(v) case _ => None}.firstOption
-  }
-
-  private def findTitle(lst: List[Loc.LocParam]): Box[Loc.Title[T]] = lst match {
-    case Nil => Empty
-    case (t: Loc.Title[_]) :: xs =>
-      // ugly code to avoid type erasure warning
-      Full(t.asInstanceOf[Loc.Title[T]])
-    case _ => findTitle(lst.tail)
+    allParams.flatMap{ case v: Loc.Template => Some(v); case _ => None }.firstOption
   }
 
   /**
-   * The title of the location
+   * The title to be displayed for a value of type T. The 
    */
-  def title: NodeSeq = ((overrideValue or requestValue.is or defaultValue).map(p => title(p)) or linkText) openOr Text(name)
+  def title(in: T): NodeSeq = {
+    params.flatMap{ case Loc.Title(f) => Some(f); case _ => None }.firstOption.map(_.apply(in)) getOrElse linkText(in)
+  }
 
-  def title(in: T): NodeSeq = findTitle(params).map(_.title(in)) openOr linkText(in)
+  /**
+   * The title of the location given the current value associated with this Loc
+   */
+  def title: NodeSeq = currentValue.map(title _) or linkText openOr Text(name)
 
-  def linkText: Box[NodeSeq] = (overrideValue or requestValue.is or defaultValue).map(p => linkText(p))
-
+  /**
+   * The link text to be displayed for a value of type T
+   */
   def linkText(in: T): NodeSeq = text.text(in)
+
+  /**
+   * The title of the location given the current value associated with this Loc
+   */
+  def linkText: Box[NodeSeq] = currentValue.map(linkText _)
 
   private[sitemap] def setMenu(p: Menu) {
     _menu = p
@@ -222,7 +229,7 @@ trait Loc[T] {
 
   def menu = _menu
 
-  private def testAllParams(what: List[Loc.LocParam], req: Req): Boolean = {
+  private def testAllParams(what: List[Loc.LocParam[T]], req: Req): Boolean = {
     what match {
       case Nil => true
       case (x: Loc.Test) :: xs =>
@@ -256,8 +263,8 @@ trait Loc[T] {
       text.text(p), 
       l, Nil, false, false,  
       allParams.flatMap {
-        case v: Loc.LocInfo[_] => v()
-        case _ =>  Nil
+        case v: Loc.LocInfo[_] => List(v())
+        case _ => Nil
       }
     )
   
@@ -275,8 +282,8 @@ trait Loc[T] {
             text.text(p),
             t, kids, current, path,
             allParams.flatMap {
-              case v: Loc.LocInfo[_] => v()
-              case _ =>  Nil
+              case v: Loc.LocInfo[_] => List(v())
+              case _ => Nil
             }, 
             placeHolder_?
           )
@@ -287,25 +294,17 @@ trait Loc[T] {
 
   protected def calcHidden(kids: List[MenuItem]) = hidden || (hideIfNoKids_? && kids.isEmpty)
 
-  def hidden = _hidden
-
   private lazy val _hidden = allParams.contains(Loc.Hidden)
 
-  private lazy val groupSet: Set[String] =
-  Set(allParams.flatMap{case s: Loc.LocGroup => s.group case _ => Nil} :_*)
+  def hidden = _hidden
+
+  private lazy val groupSet: Set[String] = {
+    Set(allParams.flatMap{case s: Loc.LocGroup => s.group case _ => Nil} :_*)
+  }
 
   def inGroup_?(group: String): Boolean = groupSet.contains(group)
-
-  /**
-   * A title for the page.  A function that calculates the title... useful
-   * if the title of the page is dependent on current state
-   */
-  case class Title(title: T => NodeSeq) extends LocParam
-
-  trait LocInfo extends LocParam {
-    def apply(): Box[T]
-  }
 }
+
 
 
 /**
@@ -323,38 +322,18 @@ object Loc {
    * @param text -- the text to display when the link is displayed
    * @param params -- access test, title calculation, etc.
    */
-  def apply(theName: String,
-            theLink: Link[Unit],
-            theText: LinkText[Unit],
-            theParams: LocParam*): Loc[Unit] =
-  new Loc[Unit] {
-    val name = theName
-    val link: Loc.Link[Unit] = theLink
+  def apply(name: String, link: Link[Unit], text: LinkText[Unit], params: LocParam[Unit]*): Loc[Unit] = UnitLoc(name, link, text, params.toList)
+  def apply(name: String, link: Link[Unit], text: LinkText[Unit], params: List[LocParam[Unit]]): Loc[Unit] = UnitLoc(name, link, text, params)
 
-    val text: Loc.LinkText[Unit] = theText
-    val defaultValue: Box[Unit] = Full(Unit)
-
-    val params: List[LocParam] = theParams.toList
-
-    checkProtected(link, params)
+  private case class UnitLoc(
+    override val name: String, 
+    override val link: Link[Unit],
+    override val text: LinkText[Unit],
+    override val params: List[LocParam[Unit]]) extends Loc[Unit] {
+    override val defaultValue: Box[Unit] = Full(())
   }
 
-  def apply(theName: String, theLink: Loc.Link[Unit],
-            theText: LinkText[Unit],
-            theParams: List[LocParam]): Loc[Unit] =
-  new Loc[Unit] {
-    val name = theName
-    val link: Loc.Link[Unit] = theLink
-    val defaultValue: Box[Unit] = Full(Unit)
-
-    val text: Loc.LinkText[Unit] = theText
-
-    val params: List[LocParam]  = theParams.toList
-
-    checkProtected(link, params)
-  }
-
-  def checkProtected(link: Link[_], params: List[LocParam]) {
+  def checkProtected[T](link: Link[T], params: List[LocParam[T]]) {
     params.map {
       case Loc.HttpAuthProtected(role) => LiftRules.httpAuthProtectedResource.append(
           new LiftRules.HttpAuthProtectedResourcePF() {
@@ -370,31 +349,33 @@ object Loc {
    * Algebraic data type for parameters that modify handling of a Loc
    * in a SiteMap
    */ 
-  sealed trait LocParam
+  sealed trait LocParam[+T]
 
   /**
    * Extension point for user-defined LocParam instances.
    */ 
-  trait UserLocParam extends LocParam
+  trait UserLocParam[+T] extends LocParam[T]
+
+  trait AnyLocParam extends LocParam[Nothing]
 
   /**
    * If this parameter is included, the item will not be visible in the menu, but
    * will still be accessable.
    */
-  case object Hidden extends LocParam
+  case object Hidden extends AnyLocParam
 
   /**
    * Indicates that the path denominated by Loc requires HTTP authentication
    * and only a user assigned to this role or to a role that is child-of this role
    * can access it.
    */
-  case class HttpAuthProtected(role: () => Box[Role]) extends LocParam
+  case class HttpAuthProtected(role: () => Box[Role]) extends AnyLocParam
 
   /**
    * If the Loc is in a group (or groups) like "legal" "community" etc.
    * the groups can be specified and recalled at the top level
    */
-  case class LocGroup(group: String*) extends LocParam
+  case class LocGroup(group: String*) extends AnyLocParam
 
   /**
    * If the test returns True, the page can be accessed, otherwise,
@@ -405,7 +386,8 @@ object Loc {
    * @param failMsg -- what to return the the browser (e.g., 304, etc.) if
    * the page is accessed.
    */
-  case class If(test: () => Boolean, failMsg: FailMsg) extends LocParam
+  case class If(test: () => Boolean, failMsg: FailMsg) extends AnyLocParam
+  case class IfValue[T](test: Box[T] => Boolean, failMsg: FailMsg) extends LocParam[T]
 
   /**
    * Unless the test returns True, the page can be accessed, otherwise,
@@ -416,52 +398,69 @@ object Loc {
    * @param failMsg -- what to return the the browser (e.g., 304, etc.) if
    * the page is accessed.
    */
-  case class Unless(test: () => Boolean, failMsg: FailMsg) extends LocParam
+  case class Unless(test: () => Boolean, failMsg: FailMsg) extends AnyLocParam
+  case class UnlessValue[T](test: Box[T] => Boolean, failMsg: FailMsg) extends LocParam[T]
 
   /**
    * Allows extra access testing for a given menu location such that
    * you can generically return a response during access control
    * testing
    */
-  case class TestAccess(func: () => Box[LiftResponse]) extends LocParam
+  case class TestAccess(func: () => Box[LiftResponse]) extends AnyLocParam
+  case class TestValueAccess[T](func: Box[T] => Box[LiftResponse]) extends LocParam[T]
 
   /**
    * Allows you to generate an early response for the location rather than
    * going through the whole Lift XHTML rendering pipeline
    */
-  case class EarlyResponse(func: () => Box[LiftResponse]) extends LocParam
+  case class EarlyResponse(func: () => Box[LiftResponse]) extends AnyLocParam
 
   /**
    * Tests to see if the request actually matches the requirements for access to
    * the page.  For example, if a parameter is missing from the request, this
    * is a good way to restrict access to the page.
    */
-  case class Test(test: Req => Boolean) extends LocParam
+  case class Test(test: Req => Boolean) extends AnyLocParam
+
+  /**
+   * Allows a user to specify a template based upon a function from the current
+   * value encapsulated in the Loc
+   */
+  case class Template(template: () => NodeSeq) extends AnyLocParam
+
+  /**
+   * This LocParam may be used to specify a function that calculates a title for the page
+   * based upon the current value encapsulated by this Loc.
+   */
+  case class Title[T](title: T => NodeSeq) extends LocParam[T]
+
+  /**
+   *
+   */
+  trait LocInfo[T] extends LocParam[T] with Function0[Box[Function0[T]]]
 
   /**
    * A single snippet that's assocaited with a given location... the snippet
    * name and the snippet function'
    */
-  case class Snippet(name: String, func: NodeSeq => NodeSeq) extends LocParam
-
-  case class Template(template: () => NodeSeq) extends LocParam
+  case class Snippet(name: String, func: NodeSeq => NodeSeq) extends AnyLocParam
 
   /**
    * Allows you to create a handler for many snippets that are associated with
    * a Loc
    */
-  trait LocSnippets extends PartialFunction[String, NodeSeq => NodeSeq] with LocParam
+  trait LocSnippets extends PartialFunction[String, NodeSeq => NodeSeq] with AnyLocParam
 
   /**
    * If the Loc has no children, hide the Loc itself
    */
-  object HideIfNoKids extends LocParam
+  object HideIfNoKids extends AnyLocParam
 
   /**
    * The Loc does not represent a menu itself, but is the parent menu for
    * children (implies HideIfNoKids)
    */
-  object PlaceHolder extends LocParam
+  object PlaceHolder extends AnyLocParam
   
   /**
    * A subclass of LocSnippets with a built in dispatch method (no need to
@@ -477,7 +476,8 @@ object Loc {
   }
 
   /**
-   * What's the link text.
+   * A function that can be used to calculate the link text from the current
+   * value encapsulated by the Loc.
    */
   case class LinkText[T](text: T => NodeSeq)
 
@@ -561,7 +561,7 @@ case class CompleteMenu(lines: Seq[MenuItem]) {
 case class MenuItem(text: NodeSeq, uri: NodeSeq,  kids: Seq[MenuItem],
                     current: Boolean,
                     path: Boolean,
-                    info: List[Loc.LocInfoVal[_]]) {
+                    info: List[Box[() => _]]) {
 
   private var _placeholder = false
   def placeholder_? = _placeholder
@@ -569,7 +569,7 @@ case class MenuItem(text: NodeSeq, uri: NodeSeq,  kids: Seq[MenuItem],
   def this(text: NodeSeq, uri: NodeSeq,  kids: Seq[MenuItem],
            current: Boolean,
            path: Boolean,
-           info: List[Loc.LocInfoVal[_]],
+           info: List[Box[() => _]],
            ph: Boolean) = {
     this(text, uri, kids, current, path, info)
     _placeholder = ph
