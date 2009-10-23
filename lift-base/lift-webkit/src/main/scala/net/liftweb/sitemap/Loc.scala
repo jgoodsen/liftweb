@@ -23,28 +23,29 @@ import auth._
 
 import _root_.scala.xml.{NodeSeq, Text}
 
-sealed trait NullLocParams
-object NullLocParams extends NullLocParams
-
 /**
  * A menu location
  */
-trait Loc[ParamType] {
-  type LocRewrite =  Box[PartialFunction[RewriteRequest, (RewriteResponse, ParamType)]]
+trait Loc[T] {
+  type LocRewrite =  Box[PartialFunction[RewriteRequest, (RewriteResponse, T)]]
 
   def name: String
 
-  def link: Loc.Link[ParamType]
+  def link: Loc.Link[T]
 
-  def text: Loc.LinkText[ParamType]
+  def text: Loc.LinkText[T]
 
   def params: List[Loc.LocParam]
 
-  def defaultParams: Box[ParamType]
+  def overrideValue: Box[T] = Empty
 
-  def additionalKidParams: List[ParamType] = Nil
+  object requestValue extends RequestVar[Box[T]](Empty) {
+    override val __nameSalt = randomString(10)
+  }
 
-  def forceParam: Box[ParamType] = Empty
+  def defaultValue: Box[T]
+
+  def childValues: List[T] = Nil
 
   def rewrite: LocRewrite = Empty
 
@@ -60,9 +61,9 @@ trait Loc[ParamType] {
 
   def siteMap: SiteMap = _menu.siteMap
 
-  def createDefaultLink: Option[NodeSeq] = (foundParam.is or defaultParams).flatMap(p => link.createLink(p)).toOption
+  def createDefaultLink: Option[NodeSeq] = (requestValue.is or defaultValue).flatMap(p => link.createLink(p)).toOption
 
-  def createLink(in: ParamType): Option[NodeSeq] = link.createLink(in).toOption
+  def createLink(in: T): Option[NodeSeq] = link.createLink(in).toOption
 
   override def toString = "Loc("+name+", "+link+", "+text+", "+params+")"
 
@@ -80,13 +81,13 @@ trait Loc[ParamType] {
 
       def apply(in: RewriteRequest): RewriteResponse = {
         val (ret, param) = rw.apply(in)
-        foundParam.set(Full(param))
+        requestValue.set(Full(param))
         ret
       }
     }
   )
 
-  type SnippetTest = PartialFunction[(String, Box[ParamType]), NodeSeq => NodeSeq]
+  type SnippetTest = PartialFunction[(String, Box[T]), NodeSeq => NodeSeq]
 
   def snippets: SnippetTest = Map.empty
 
@@ -114,14 +115,14 @@ trait Loc[ParamType] {
       }
 
       new SnippetTest {
-        def isDefinedAt(in: (String, Box[ParamType])): Boolean = func.isDefinedAt(in._1)
-        def apply(in: (String, Box[ParamType])): NodeSeq => NodeSeq = func.apply(in._1)
+        def isDefinedAt(in: (String, Box[T])): Boolean = func.isDefinedAt(in._1)
+        def apply(in: (String, Box[T])): NodeSeq => NodeSeq = func.apply(in._1)
       }
     }
   }
 
   def snippet(name: String): Box[NodeSeq => NodeSeq] = {
-    val test = (name, foundParam.is)
+    val test = (name, requestValue.is)
 
     if ((snippets orElse calcSnippets).isDefinedAt(test)) Full((snippets orElse calcSnippets)(test))
     else Empty
@@ -193,32 +194,28 @@ trait Loc[ParamType] {
     allParams.flatMap{case v: Loc.Template => Some(v) case _ => None}.firstOption
   }
 
-  private def findTitle(lst: List[Loc.LocParam]): Box[Loc.Title[ParamType]] = lst match {
+  private def findTitle(lst: List[Loc.LocParam]): Box[Loc.Title[T]] = lst match {
     case Nil => Empty
     case (t: Loc.Title[_]) :: xs =>
       // ugly code to avoid type erasure warning
-      Full(t.asInstanceOf[Loc.Title[ParamType]])
+      Full(t.asInstanceOf[Loc.Title[T]])
     case _ => findTitle(lst.tail)
   }
 
   /**
    * The title of the location
    */
-  def title: NodeSeq = ((forceParam or foundParam.is or defaultParams).map(p => title(p)) or linkText) openOr Text(name)
+  def title: NodeSeq = ((overrideValue or requestValue.is or defaultValue).map(p => title(p)) or linkText) openOr Text(name)
 
-  def title(in: ParamType): NodeSeq = findTitle(params).map(_.title(in)) openOr linkText(in)
+  def title(in: T): NodeSeq = findTitle(params).map(_.title(in)) openOr linkText(in)
 
-  def linkText: Box[NodeSeq] = (forceParam or foundParam.is or defaultParams).map(p => linkText(p))
+  def linkText: Box[NodeSeq] = (overrideValue or requestValue.is or defaultValue).map(p => linkText(p))
 
-  def linkText(in: ParamType): NodeSeq = text.text(in)
+  def linkText(in: T): NodeSeq = text.text(in)
 
   private[sitemap] def setMenu(p: Menu) {
     _menu = p
     p.siteMap.addLoc(this)
-  }
-
-  object foundParam extends RequestVar[Box[ParamType]](Empty) {
-    override val __nameSalt = randomString(10)
   }
 
   private var _menu: Menu = _
@@ -253,7 +250,7 @@ trait Loc[ParamType] {
   }
 
   def supplimentalKidMenuItems: List[MenuItem] = 
-    for {p <- additionalKidParams 
+    for {p <- childValues 
          l <- link.createLink(p)} 
     yield MenuItem(
       text.text(p), 
@@ -272,7 +269,7 @@ trait Loc[ParamType] {
   private[liftweb] def buildItem(kids: List[MenuItem], current: Boolean, path: Boolean): Box[MenuItem] = 
     (calcHidden(kids), testAccess) match {
       case (false, Left(true)) => {
-          for {p <- (forceParam or foundParam.is or defaultParams)
+          for {p <- (overrideValue or requestValue.is or defaultValue)
                t <- link.createLink(p)}
           yield new MenuItem(
             text.text(p),
@@ -298,6 +295,16 @@ trait Loc[ParamType] {
   Set(allParams.flatMap{case s: Loc.LocGroup => s.group case _ => Nil} :_*)
 
   def inGroup_?(group: String): Boolean = groupSet.contains(group)
+
+  /**
+   * A title for the page.  A function that calculates the title... useful
+   * if the title of the page is dependent on current state
+   */
+  case class Title(title: T => NodeSeq) extends LocParam
+
+  trait LocInfo extends LocParam {
+    def apply(): Box[T]
+  }
 }
 
 
@@ -317,30 +324,30 @@ object Loc {
    * @param params -- access test, title calculation, etc.
    */
   def apply(theName: String,
-            theLink: Link[NullLocParams],
-            theText: LinkText[NullLocParams],
-            theParams: LocParam*): Loc[NullLocParams] =
-  new Loc[NullLocParams] {
+            theLink: Link[Unit],
+            theText: LinkText[Unit],
+            theParams: LocParam*): Loc[Unit] =
+  new Loc[Unit] {
     val name = theName
-    val link: Loc.Link[NullLocParams] = theLink
+    val link: Loc.Link[Unit] = theLink
 
-    val text: Loc.LinkText[NullLocParams] = theText
-    val defaultParams: Box[NullLocParams] = Full(NullLocParams)
+    val text: Loc.LinkText[Unit] = theText
+    val defaultValue: Box[Unit] = Full(Unit)
 
     val params: List[LocParam] = theParams.toList
 
     checkProtected(link, params)
   }
 
-  def apply(theName: String, theLink: Loc.Link[NullLocParams],
-            theText: LinkText[NullLocParams],
-            theParams: List[LocParam]): Loc[NullLocParams] =
-  new Loc[NullLocParams] {
+  def apply(theName: String, theLink: Loc.Link[Unit],
+            theText: LinkText[Unit],
+            theParams: List[LocParam]): Loc[Unit] =
+  new Loc[Unit] {
     val name = theName
-    val link: Loc.Link[NullLocParams] = theLink
-    val defaultParams: Box[NullLocParams] = Full(NullLocParams)
+    val link: Loc.Link[Unit] = theLink
+    val defaultValue: Box[Unit] = Full(Unit)
 
-    val text: Loc.LinkText[NullLocParams] = theText
+    val text: Loc.LinkText[Unit] = theText
 
     val params: List[LocParam]  = theParams.toList
 
@@ -369,12 +376,6 @@ object Loc {
    * Extension point for user-defined LocParam instances.
    */ 
   trait UserLocParam extends LocParam
-
-  /**
-   * A title for the page.  A function that calculates the title... useful
-   * if the title of the page is dependent on current state
-   */
-  case class Title[T](title: T => NodeSeq) extends LocParam
 
   /**
    * If this parameter is included, the item will not be visible in the menu, but
@@ -461,7 +462,7 @@ object Loc {
    * children (implies HideIfNoKids)
    */
   object PlaceHolder extends LocParam
-
+  
   /**
    * A subclass of LocSnippets with a built in dispatch method (no need to
    * implement isDefinedAt or apply... just
@@ -492,8 +493,7 @@ object Loc {
    * (for example, help pages)
    * @param create -- create a URL based on incoming parameters
    */
-  class Link[T](val uriList: List[String], val matchHead_? : Boolean) extends
-  PartialFunction[Req, Box[Boolean]] {
+  class Link[T](val uriList: List[String], val matchHead_? : Boolean) extends PartialFunction[Req, Box[Boolean]] {
     def this(b: List[String]) = this(b, false)
 
     def isDefinedAt(req: Req): Boolean = {
@@ -520,25 +520,17 @@ object Loc {
    */
   object Link {
     def apply(urlLst: List[String], matchHead_? : Boolean, url: String) = {
-      new Link[NullLocParams](urlLst, matchHead_?) {
-        override def createLink(params: NullLocParams): Box[NodeSeq] = Full(Text(url))
+      new Link[Unit](urlLst, matchHead_?) {
+        override def createLink(params: Unit): Box[NodeSeq] = Full(Text(url))
       }
     }
   }
 
   object ExtLink {
-    def apply(url: String) = new Link[NullLocParams](Nil, false) {
-      override def createLink(params: NullLocParams): Box[NodeSeq] =
+    def apply(url: String) = new Link[Unit](Nil, false) {
+      override def createLink(params: Unit): Box[NodeSeq] =
       Full(Text(url))
     }
-  }
-
-  trait LocInfoVal[T] {
-    def value: T
-  }
-
-  trait LocInfo[T] extends LocParam {
-    def apply(): Box[LocInfoVal[T]]
   }
 
   def alwaysTrue(a: Req) = true
@@ -547,8 +539,8 @@ object Loc {
   implicit def nodeSeqToLinkText[T](in: => NodeSeq): LinkText[T] = LinkText[T](T => in)
   implicit def strToLinkText[T](in: => String): LinkText[T] = LinkText(T => Text(in))
 
-  implicit def strLstToLink(in: Seq[String]): Link[NullLocParams] = new Link[NullLocParams](in.toList)
-  implicit def strPairToLink(in: (Seq[String], Boolean)): Link[NullLocParams] = new Link[NullLocParams](in._1.toList, in._2)
+  implicit def strLstToLink(in: Seq[String]): Link[Unit] = new Link[Unit](in.toList)
+  implicit def strPairToLink(in: (Seq[String], Boolean)): Link[Unit] = new Link[Unit](in._1.toList, in._2)
 
   implicit def strToFailMsg(in: => String): FailMsg = () => {
     RedirectWithState(
@@ -560,9 +552,6 @@ object Loc {
   implicit def strFuncToFailMsg(in: () => String): FailMsg = strToFailMsg(in())
 
   implicit def redirectToFailMsg(in: => RedirectResponse): FailMsg = () => in
-
-  //def f(in: String): () => String = () => in
-  //def f(in: => RedirectResponse): () => RedirectResponse = () => in
 }
 
 case class CompleteMenu(lines: Seq[MenuItem]) {
