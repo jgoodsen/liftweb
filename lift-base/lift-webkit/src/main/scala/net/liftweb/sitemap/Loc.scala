@@ -306,7 +306,6 @@ trait Loc[T] {
 }
 
 
-
 /**
  * The Loc companion object, complete with a nice constructor
  */
@@ -329,8 +328,19 @@ object Loc {
     override val name: String, 
     override val link: Link[Unit],
     override val text: LinkText[Unit],
-    override val params: List[LocParam[Unit]]) extends Loc[Unit] {
+    override val params: List[LocParam[Unit]]
+  ) extends Loc[Unit] {
     override val defaultValue: Box[Unit] = Full(())
+  }
+
+  case class VLoc[T](
+    override val name: String,
+    override val link: Link[T],
+    override val text: LinkText[T],
+    override val defaultValue: Box[T],
+    xparams: LocParam[T]*
+  ) extends Loc[T] {
+    override val params = xparams.toList
   }
 
   def checkProtected[T](link: Link[T], params: List[LocParam[T]]) {
@@ -493,7 +503,7 @@ object Loc {
    * (for example, help pages)
    * @param create -- create a URL based on incoming parameters
    */
-  class Link[T](val uriList: List[String], val matchHead_? : Boolean) extends PartialFunction[Req, Box[Boolean]] {
+  class Link[-T](val uriList: List[String], val matchHead_? : Boolean) extends PartialFunction[Req, Box[Boolean]] {
     def this(b: List[String]) = this(b, false)
 
     def isDefinedAt(req: Req): Boolean = {
@@ -528,8 +538,7 @@ object Loc {
 
   object ExtLink {
     def apply(url: String) = new Link[Unit](Nil, false) {
-      override def createLink(params: Unit): Box[NodeSeq] =
-      Full(Text(url))
+      override def createLink(params: Unit): Box[NodeSeq] = Full(Text(url))
     }
   }
 
