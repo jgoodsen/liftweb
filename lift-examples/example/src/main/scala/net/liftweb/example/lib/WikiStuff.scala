@@ -57,13 +57,13 @@ object WikiStuff extends Loc[WikiLoc] {
   def name = "wiki"
 
   // the default parameters (used for generating the menu listing)
-  def defaultParams = Full(WikiLoc("HomePage", false))
+  def defaultValue = Full(WikiLoc("HomePage", false))
 
   // no extra parameters
   def params = List(Unless(() => Props.inGAE || Props.productionMode, "Disabled for GAE"))
 
   // is the current page an "edit" or "view"
-  def currentEdit = foundParam.is.map(_.edit) openOr false
+  def currentEdit = requestValue.is.map(_.edit) openOr false
 
   /**
    * Check for page-specific snippets and
