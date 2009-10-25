@@ -333,7 +333,7 @@ object Loc {
     override val defaultValue: Box[Unit] = Full(())
   }
 
-  case class VLoc[T](
+  case class DataLoc[T](
     override val name: String,
     override val link: Link[T],
     override val text: LinkText[T],
@@ -359,20 +359,9 @@ object Loc {
    * Algebraic data type for parameters that modify handling of a Loc
    * in a SiteMap
    */ 
-  sealed trait LocParam[+T]
+  sealed trait LocParam[-T]
 
-  /**
-   * Extension point for user-defined LocParam instances.
-   */ 
-  trait UserLocParam[+T] extends LocParam[T]
-
-  trait AnyLocParam extends LocParam[Nothing]
-
-  /**
-   * If this parameter is included, the item will not be visible in the menu, but
-   * will still be accessable.
-   */
-  case object Hidden extends AnyLocParam
+  type AnyLocParam = LocParam[Any]
 
   /**
    * Indicates that the path denominated by Loc requires HTTP authentication
@@ -382,10 +371,10 @@ object Loc {
   case class HttpAuthProtected(role: () => Box[Role]) extends AnyLocParam
 
   /**
-   * If the Loc is in a group (or groups) like "legal" "community" etc.
-   * the groups can be specified and recalled at the top level
+   * Allows you to generate an early response for the location rather than
+   * going through the whole Lift XHTML rendering pipeline
    */
-  case class LocGroup(group: String*) extends AnyLocParam
+  case class EarlyResponse(func: () => Box[LiftResponse]) extends AnyLocParam
 
   /**
    * If the test returns True, the page can be accessed, otherwise,
@@ -420,12 +409,6 @@ object Loc {
   case class TestValueAccess[T](func: Box[T] => Box[LiftResponse]) extends LocParam[T]
 
   /**
-   * Allows you to generate an early response for the location rather than
-   * going through the whole Lift XHTML rendering pipeline
-   */
-  case class EarlyResponse(func: () => Box[LiftResponse]) extends AnyLocParam
-
-  /**
    * Tests to see if the request actually matches the requirements for access to
    * the page.  For example, if a parameter is missing from the request, this
    * is a good way to restrict access to the page.
@@ -437,6 +420,7 @@ object Loc {
    * value encapsulated in the Loc
    */
   case class Template(template: () => NodeSeq) extends AnyLocParam
+  case class ValueTemplate[T](template: T => NodeSeq) extends LocParam[T]
 
   /**
    * This LocParam may be used to specify a function that calculates a title for the page
@@ -445,9 +429,17 @@ object Loc {
   case class Title[T](title: T => NodeSeq) extends LocParam[T]
 
   /**
-   *
+   * If the Loc is in a group (or groups) like "legal" "community" etc.
+   * the groups can be specified and recalled at the top level
    */
-  trait LocInfo[T] extends LocParam[T] with Function0[Box[Function0[T]]]
+  case class LocGroup(group: String*) extends AnyLocParam
+
+  /**
+   * An extension point for adding arbitrary lazy values to a Loc.
+   */
+  trait LocInfo[X] extends AnyLocParam {
+    def apply(): Box[() => X]
+  }
 
   /**
    * A single snippet that's assocaited with a given location... the snippet
@@ -462,16 +454,27 @@ object Loc {
   trait LocSnippets extends PartialFunction[String, NodeSeq => NodeSeq] with AnyLocParam
 
   /**
+   * If this parameter is included, the item will not be visible in the menu, but
+   * will still be accessable.
+   */
+  case object Hidden extends AnyLocParam
+
+  /**
    * If the Loc has no children, hide the Loc itself
    */
-  object HideIfNoKids extends AnyLocParam
+  case object HideIfNoKids extends AnyLocParam
 
   /**
    * The Loc does not represent a menu itself, but is the parent menu for
    * children (implies HideIfNoKids)
    */
-  object PlaceHolder extends AnyLocParam
+  case object PlaceHolder extends AnyLocParam
   
+  /**
+   * Extension point for user-defined LocParam instances.
+   */ 
+  trait UserLocParam[-T] extends LocParam[T]
+
   /**
    * A subclass of LocSnippets with a built in dispatch method (no need to
    * implement isDefinedAt or apply... just
