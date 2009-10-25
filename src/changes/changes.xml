@@ -25,6 +25,32 @@
       <action dev="dpp" type="fix" issue="94" due-to="vdichev">
 	Textile parser outputs non-valid output.  Changed some null to Null.
       </action>
+      <action dev="dpp" type="add" >
+	Revised Lift to use LiftActors and be compatible with
+	Akka Actors
+      </action>
+      <action dev="dpp" type="fix" issue="126">
+	S.deleteCookie broken in M6
+      </action>
+      <action dev="dpp" type="add" issue="125">
+	DB.runQuery isn't ConnectionIdentifier-aware 
+      </action>
+
+      <action dev="dpp" type="fix" issue="119">
+	Misspelling in field name in ProtoExtendedSession
+      </action>
+
+      <action dev="dpp" type="fix" issue="120">
+	net.liftweb.widgets.autocomplete in version 1.1-M6 
+	changed return type from NodeSeq to Elem
+      </action>
+
+      <action dev="dpp" type="fix" issue="122">
+	StatefulSnippets generate invalid markup
+      </action>
+
+
+
     </release>
     <release version="1.1-M6" date="2009-10-08" description="Lift 1.1 Milestone 6"/>
 >>>>>>> Changed null to Null.  Closes #94:src/changes/changes.xml

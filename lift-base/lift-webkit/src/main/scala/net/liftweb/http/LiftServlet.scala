@@ -47,8 +47,6 @@ class LiftServlet {
     try {
       LiftRules.ending = true
       LiftRules.runUnloadHooks()
-      //tryo(Scheduler.snapshot) // pause the Actor scheduler so we don't have threading issues
-      //Scheduler.shutdown
       ActorPing.shutdown
       LAScheduler.shutdown
       Log.debug("Destroyed Lift handler.")
@@ -273,11 +271,7 @@ class LiftServlet {
     tryo{LiftSession.onBeginServicing.foreach(_(liftSession, requestState))}
     val ret = requestState.param("__lift__GC") match {
       case Full(_) =>
-        val now = millis
-        val found: Int = liftSession.synchronized {
-          liftSession.updateFuncByOwner(RenderVersion.get, now)
-        }
-
+        liftSession.updateFuncByOwner(RenderVersion.get, millis)
         Full(JavaScriptResponse(js.JsCmds.Noop))
 
       case _ =>

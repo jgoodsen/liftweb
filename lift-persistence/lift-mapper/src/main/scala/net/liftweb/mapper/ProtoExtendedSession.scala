@@ -40,9 +40,16 @@ KeyedMapper[Long, T] {
 
   object userId extends MappedString(this, 64)
 
-  object experation extends MappedLong(this) {
+  object expiration extends MappedLong(this) {
     override def defaultValue = expirationTime
+    override def dbColumnName = expirationColumnName
   }
+
+  /**
+   * Change this string to "experation" for compatibility with
+   * old mis-spelling
+   */
+  protected def expirationColumnName = "expiration"
 
   def expirationTime: Long = millis + 180.days
 }
@@ -63,7 +70,7 @@ KeyedMetaMapper[Long, T] {
       (recoverUserId, S.findCookie(CookieName)) match {
         case (Empty, Full(c)) =>
           find(By(cookieId, c.value openOr "")) match {
-            case Full(es) if es.experation.is < millis => es.delete_!
+            case Full(es) if es.expiration.is < millis => es.delete_!
             case Full(es) => logUserIdIn(es.userId)
             case _ =>
           }
@@ -82,8 +89,8 @@ KeyedMetaMapper[Long, T] {
     userDidLogout(Full(uid))
     val inst = create.userId(uid.userIdAsString).saveMe
     val cookie = HTTPCookie(CookieName, inst.cookieId).
-      setMaxAge(((inst.experation.is - millis) / 1000L).toInt).
-      setPath("/")
+    setMaxAge(((inst.expiration.is - millis) / 1000L).toInt).
+    setPath("/")
     S.addCookie(cookie)
   }
 

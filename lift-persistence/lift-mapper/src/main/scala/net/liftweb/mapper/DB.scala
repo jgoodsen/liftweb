@@ -246,14 +246,22 @@ object DB {
     (colNames, lb.toList)
   }
 
+/**
+   * Executes the given parameterized query string with the given parameters.
+   * Parameters are substituted in order. For Date/Time types, passing a java.util.Date will result in a
+   * Timestamp parameter. If you want a specific SQL Date/Time type, use the corresponding
+   * java.sql.Date, java.sql.Time, or java.sql.Timestamp classes.
+   */
+  def runQuery(query: String, params: List[Any]): (List[String], List[List[String]]) =
+  runQuery(query, params, DefaultConnectionIdentifier)
   /**
    * Executes the given parameterized query string with the given parameters.
    * Parameters are substituted in order. For Date/Time types, passing a java.util.Date will result in a
    * Timestamp parameter. If you want a specific SQL Date/Time type, use the corresponding
    * java.sql.Date, java.sql.Time, or java.sql.Timestamp classes.
    */
-  def runQuery(query: String, params: List[Any]): (List[String], List[List[String]]) = {
-    use(DefaultConnectionIdentifier)(conn => prepareStatement(query, conn) {
+  def runQuery(query: String, params: List[Any], connectionIdentifier: ConnectionIdentifier): (List[String], List[List[String]]) = {
+    use(connectionIdentifier)(conn => prepareStatement(query, conn) {
         ps =>
         params.zipWithIndex.foreach {
           case (null, idx) => ps.setNull(idx + 1, Types.VARCHAR)

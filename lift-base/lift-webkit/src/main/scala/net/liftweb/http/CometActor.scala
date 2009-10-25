@@ -360,42 +360,7 @@ trait CometActor extends LiftActor with LiftCometActor with BindHelpers {
 
    myPf
   }
-  /*
-  def act = {
-    loop {
-      react(composeFunction)
-    }
-  }*/
 
-  /*
-  override def react(pf: PartialFunction[Any, Unit]) = {
-    val myPf: PartialFunction[Any, Unit] = new PartialFunction[Any, Unit] {
-      def apply(in: Any): Unit =
-      CurrentCometActor.doWith(Full(CometActor.this)) {
-        S.initIfUninitted(theSession) {
-          S.functionLifespan(true) {
-            pf.apply(in)
-            if (S.functionMap.size > 0) {
-              theSession.updateFunctionMap(S.functionMap,
-                                           uniqueId, lastRenderTime)
-              S.clearFunctionMap
-            }
-          }
-        }
-      }
-
-      def isDefinedAt(in: Any): Boolean =
-      CurrentCometActor.doWith(Full(CometActor.this)) {
-        S.initIfUninitted(theSession) {
-          S.functionLifespan(true) {
-            pf.isDefinedAt(in)
-          }
-        }
-      }
-    }
-
-    super.react(myPf)
-  }*/
 
   def fixedRender: Box[NodeSeq] = Empty
 
@@ -506,9 +471,7 @@ trait CometActor extends LiftActor with LiftCometActor with BindHelpers {
       Log.info("The CometActor "+this+" Received Shutdown")
       askingWho.foreach(_ ! ShutDown)
       theSession.removeCometActor(this)
-      // unlink(ActorWatcher)
       _localShutdown()
-      // self.exit("Politely Asked to Exit")
 
     case PartialUpdateMsg(cmdF) =>
       val cmd: JsCmd = cmdF.apply

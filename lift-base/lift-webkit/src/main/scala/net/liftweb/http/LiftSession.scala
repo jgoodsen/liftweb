@@ -170,12 +170,7 @@ object SessionMaster extends LiftActor {
       }
   }
 
-  // Don't start the actor is we're running in the Google App Engine
-  /*
-   if (!Props.inGAE) {
-   this.start
-   }
-   */
+
 
   private[http] def sendMsg(in: Any): Unit =
   if (!Props.inGAE) this ! in
@@ -205,11 +200,7 @@ object PageName extends RequestVar[String]("")
  * Information about the page garbage collection
  */
 object RenderVersion {
-  private object ver extends RequestVar({
-      val ret =  Helpers.nextFuncName
-      S.addFunctionMap(ret, S.SFuncHolder(ignore => {}))
-      ret
-    })
+  private object ver extends RequestVar(Helpers.nextFuncName)
   def get: String = ver.is
   def set(value: String) {
     ver(value)
@@ -403,12 +394,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
   }
 
   private[http] def doShutDown() {
-    try {
       if (running_?) this.shutDown()
-    } finally {
-      //if (!Props.inGAE)
-      // Actor.clearSelf
-    }
   }
 
   private[http] def cleanupUnseenFuncs(): Unit = synchronized {
@@ -424,7 +410,8 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
   }
 
   /**
-   * Return the number if updated functions
+   * Updates the timestamp of the functions owned by this owner and return the 
+   * number of updated functions
    */
   private[http] def updateFuncByOwner(ownerName: String, time: Long): Int = synchronized {
     (0 /: messageCallback)((l, v) => l + (v._2.owner match {
@@ -436,6 +423,11 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
           case _ => 0
         }))
   }
+
+  /**
+   * Returns true if there are functions bound for this owner
+   */
+  private[http] def hasFuncsForOwner(owner: String): Boolean = !messageCallback.find(_._2.owner == owner).isEmpty
 
   private def shutDown() = {
     var done: List[() => Unit] = Nil
@@ -509,18 +501,14 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
                    // Phase 1: snippets & templates processing
                    map(xml => processSurroundAndInclude(PageName get, xml)) match {
                       case Full(rawXml: NodeSeq) => {
+
+                          // Make sure that functions have the right owner. It is important for this to
+                          // happen before the merge phase so that in merge to have a correct view of 
+                          // mapped functions and their owners.
+                          updateFunctionMap(S.functionMap, RenderVersion get, millis)
+
                           // Phase 2: Head & Tail merge, add additional elements to body & head
                           val xml = merge(rawXml, request)
-
-                          LiftSession.this.synchronized {
-                            S.functionMap.foreach {mi =>
-                              // ensure the right owner
-                              messageCallback(mi._1) = mi._2.owner match {
-                                case Empty => mi._2.duplicate(RenderVersion.get)
-                                case _ => mi._2
-                              }
-                            }
-                          }
 
                           notices = Nil
                           // Phase 3: Response conversion including fixHtml
@@ -806,7 +794,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
                 if (inst.dispatch.isDefinedAt(method)) {
                   val res = inst.dispatch(method)(kids)
 
-                  (if (isForm && !res.isEmpty) SHtml.hidden(() => inst.registerThisSnippet) else NodeSeq.Empty) ++
+                  (if (isForm && !res.isEmpty) <div>{SHtml.hidden(() => inst.registerThisSnippet)}</div> else NodeSeq.Empty) ++
                   res
                 } else reportSnippetError(page, snippetName,
                                           LiftRules.SnippetFailures.StatefulDispatchNotMatched,
@@ -1047,8 +1035,9 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
     cometSetup((Full(theType) -> name, msg) :: cometSetup.is)
   }
 
-  private[liftweb] def findComet(theType: Box[String], name: Box[String], defaultXml: NodeSeq, attributes: Map[String, String]): Box[LiftCometActor] =
-  {
+  private[liftweb] def findComet(theType: Box[String], name: Box[String], 
+                                 defaultXml: NodeSeq,
+                                 attributes: Map[String, String]): Box[LiftCometActor] = {
     val what = (theType -> name)
     val ret = synchronized {
 

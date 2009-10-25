@@ -105,7 +105,7 @@ class AutoComplete {
    * @param attrs - the attributes that can be added to the input text field 
    */
   def render(start: String, options: (String, Int) => Seq[String],
-             onSubmit: String => Unit, attrs: (String, String)*): NodeSeq = {
+             onSubmit: String => Unit, attrs: (String, String)*): Elem = {
     
     val f = (ignore: String) => {
       val q = S.param("q").openOr("")

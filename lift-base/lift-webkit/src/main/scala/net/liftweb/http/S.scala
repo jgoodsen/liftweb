@@ -89,12 +89,9 @@ object S extends HasParams {
     def delete(name: String) = {
       add(HTTPCookie(name, "").setMaxAge(0))
     }
-    def delete(old: HTTPCookie) = {
-      val c = old.clone().asInstanceOf[HTTPCookie]
-      c.setMaxAge(0)
-      c.setValue("")
-      add(c)
-    }
+    def delete(old: HTTPCookie) = 
+      add(old.setMaxAge(0).setValue(""))
+    
   }
 
   /*
