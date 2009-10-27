@@ -352,8 +352,8 @@ object DBLog {
              "setBytes" | "setDouble" | "setFloat" | "setInt" | "setLong" |
              "setNString" | "setRef" | "setRowId" | "setShort" | "setSQLXML"
              => {
-          chain(method,  args)
           paramMap += args(0).asInstanceOf[Int] -> args(1)
+          chain(method,  args)
         }
 
         // Everything else gets special treatment
@@ -365,10 +365,10 @@ object DBLog {
         }
 
         case "clearParameters" => {
+          paramMap = Map.empty[Int,Any]
           logMeta("Clear parameters") {
               chain(method,  Array())
           }
-          paramMap = Map.empty[Int,Any]
         }
 
         case "execute" => {
@@ -402,133 +402,133 @@ object DBLog {
         }
 
         case "setAsciiStream" if args.length == 2 => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(Ascii Stream: %s)".format(args(1))
+            chain(method,  args)
         }
 
         case "setAsciiStream" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(Ascii Stream: %s (%d bytes))".format(args(1), args(2))
+            chain(method,  args)
         }
 
         case "setBinaryStream" if args.length == 2 => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(Binary Stream: %s)".format(args(1))
+            chain(method,  args)
         }
 
         case "setBinaryStream" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(Binary Stream: %s (%d bytes))".format(args(1), args(2))
+            chain(method,  args)
         }
 
         case "setBlob" if args.length == 2 => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(Blob : %s)".format(args(1))
+            chain(method,  args)
         }
 
         case "setBlob" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(Blob : %s (%d bytes))".format(args(1), args(2))
+            chain(method,  args)
         }
 
         case "setCharacterStream" if args.length == 2 => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(Char stream : %s)".format(args(1))
+            chain(method,  args)
         }
 
         case "setCharacterStream" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(Char stream : %s (%d bytes))".format(args(1), args(2))
+            chain(method,  args)
         }
 
         case "setClob" if args.length == 2 => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(Clob : %s)".format(args(1))
+            chain(method,  args)
         }
 
         case "setClob" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(Clob : %s (%d bytes))".format(args(1), args(2))
+            chain(method,  args)
         }
 
         case "setDate" if args.length == 2 => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> args(1)
+            chain(method,  args)
         }
 
         case "setDate" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> (args(1) + ":" + args(2))
+            chain(method,  args)
         }
 
         case "setNCharacterStream" if args.length == 2 => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(NChar Stream : %s)".format(args(1))
+            chain(method,  args)
         }
 
         case "setNCharacterStream" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(NChar Stream : %s (%d bytes))".format(args(1), args(2))
+            chain(method,  args)
         }
 
         case "setNClob" if args.length == 2 => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(NClob : %s)".format(args(1))
+            chain(method,  args)
         }
 
         case "setNClob" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(NClob : %s (%d bytes))".format(args(1), args(2))
+            chain(method,  args)
         }
 
         case "setNull" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "NULL"
+            chain(method,  args)
         }
 
         case "setObject" if (args.length >= 2 && args.length < 4) => {
-            chain(method, args)
             paramMap += args(0).asInstanceOf[Int] -> args(1)
+            chain(method, args)
         }
 
         case "setObject" if args.length == 4 => {
-            chain(method, args)
             paramMap += args(0).asInstanceOf[Int] -> "%s (scale %d)".format(args(1), args(3))
+            chain(method, args)
         }
 
         case "setString" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "\"%s\"".format(args(1))
+            chain(method,  args)
         }
 
         case "setTime" if args.length == 2 => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> args(1)
+            chain(method,  args)
         }
 
         case "setTime" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> (args(1) + ":" + args(2))
+            chain(method,  args)
         }
 
         case "setTimestamp" if args.length == 2 => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> args(1)
+            chain(method,  args)
         }
 
         case "setTimestamp" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> (args(1) + ":" + args(2))
+            chain(method,  args)
         }
 
         case "setUnicodeStream" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "(Unicode Stream : %s (%d bytes))".format(args(1), args(2))
+            chain(method,  args)
         }
 
         case "setURL" => {
-            chain(method,  args)
             paramMap += args(0).asInstanceOf[Int] -> "\"%s\"".format(args(1))
+            chain(method,  args)
         }
 
         // Chain up to LoggedStatement if we don't handle it here
