@@ -312,7 +312,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
     }
 
     def buildFunc(i: RunnerHolder): () => Any = i.func match {
-      case bfh: S.BinFuncHolder =>
+      case bfh if bfh.supportsFileParams_? =>
         () => state.uploadedFiles.filter(_.name == i.name).map(v => bfh(v))
       case normal =>
         () => normal(state.params.getOrElse(i.name,
@@ -394,7 +394,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
   }
 
   private[http] def doShutDown() {
-      if (running_?) this.shutDown()
+    if (running_?) this.shutDown()
   }
 
   private[http] def cleanupUnseenFuncs(): Unit = synchronized {
@@ -495,31 +495,31 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
 
                 PageName(request.uri+" -> "+request.path)
                 LiftRules.allowParallelSnippets.doWith(() => !Props.inGAE) {
-                (request.location.flatMap(_.earlyResponse) or
-                 LiftRules.earlyResponse.firstFull(request)) or {
-                  ((locTemplate or findVisibleTemplate(request.path, request)).
-                   // Phase 1: snippets & templates processing
-                   map(xml => processSurroundAndInclude(PageName get, xml)) match {
-                      case Full(rawXml: NodeSeq) => {
+                  (request.location.flatMap(_.earlyResponse) or
+                   LiftRules.earlyResponse.firstFull(request)) or {
+                    ((locTemplate or findVisibleTemplate(request.path, request)).
+                     // Phase 1: snippets & templates processing
+                     map(xml => processSurroundAndInclude(PageName get, xml)) match {
+                        case Full(rawXml: NodeSeq) => {
 
-                          // Make sure that functions have the right owner. It is important for this to
-                          // happen before the merge phase so that in merge to have a correct view of 
-                          // mapped functions and their owners.
-                          updateFunctionMap(S.functionMap, RenderVersion get, millis)
+                            // Make sure that functions have the right owner. It is important for this to
+                            // happen before the merge phase so that in merge to have a correct view of
+                            // mapped functions and their owners.
+                            updateFunctionMap(S.functionMap, RenderVersion get, millis)
 
-                          // Phase 2: Head & Tail merge, add additional elements to body & head
-                          val xml = merge(rawXml, request)
+                            // Phase 2: Head & Tail merge, add additional elements to body & head
+                            val xml = merge(rawXml, request)
 
-                          notices = Nil
-                          // Phase 3: Response conversion including fixHtml
-                          Full(LiftRules.convertResponse(xml,
-                                                         S.getHeaders(LiftRules.defaultHeaders((xml, request))),
-                                                         S.responseCookies,
-                                                         request))
-                        }
-                      case _ => if (LiftRules.passNotFoundToChain) Empty else Full(request.createNotFound)
-                    })
-                   }
+                            notices = Nil
+                            // Phase 3: Response conversion including fixHtml
+                            Full(LiftRules.convertResponse(xml,
+                                                           S.getHeaders(LiftRules.defaultHeaders((xml, request))),
+                                                           S.responseCookies,
+                                                           request))
+                          }
+                        case _ => if (LiftRules.passNotFoundToChain) Empty else Full(request.createNotFound)
+                      })
+                  }
                 }
 
               case Right(Full(resp)) => Full(resp)
@@ -758,6 +758,20 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
     case x => findNSAttr(x.next, prefix, key)
   }
 
+  def snipFuncBuilder(f: S.AFuncHolder): S.AFuncHolder = {
+    val currentMap = snippetMap.is
+    new S.ProxyFuncHolder(f) {
+      override def apply(in: List[String]): Any = snippetMap.doWith(snippetMap.is ++ currentMap) {
+        super.apply(in)
+      }
+
+      override def apply(in: FileParamHolder): Any = snippetMap.doWith(snippetMap.is ++ currentMap) {
+        super.apply(in)
+      }
+    }
+   
+  }
+
   private def processSnippet(page: String, snippetName: Box[String],
                              attrs: MetaData,
                              wholeTag: NodeSeq,
@@ -766,7 +780,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
 
     val eagerEval: Boolean = (attrs.get("eager_eval").map(toBoolean) or
                               findNSAttr(attrs, "lift", "eager_eval").map(toBoolean)
-                              ) getOrElse false
+    ) getOrElse false
 
     val kids = if (eagerEval) processSurroundAndInclude(page, passedKids) else passedKids
 
@@ -817,7 +831,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
                       val intersection = if (Props.devMode) {
                         val methodNames = inst.getClass.getMethods().map(_.getName).toList.removeDuplicates
                         val methodAlts = List(method, Helpers.camelCase(method),
-                        Helpers.camelCaseMethod(method))
+                                              Helpers.camelCaseMethod(method))
                         methodNames intersect methodAlts
                       }  else Nil
 
@@ -825,7 +839,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
                                          LiftRules.SnippetFailures.MethodNotFound,
                                          if (intersection.isEmpty) NodeSeq.Empty else
                                          <div>There are possible matching methods ({intersection}),
-                                         but none has the required signature: <pre>def {method}(in: NodeSeq): NodeSeq</pre></div>,
+                          but none has the required signature: <pre>def {method}(in: NodeSeq): NodeSeq</pre></div>,
                                          wholeTag)
                   }
                 }

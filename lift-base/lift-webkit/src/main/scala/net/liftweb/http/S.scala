@@ -1778,37 +1778,48 @@ object S extends HasParams {
    * Abstrats a function that is executed on HTTP requests from client.
    */
   @serializable
-  sealed abstract class AFuncHolder {
+  sealed trait AFuncHolder extends Function1[List[String], Any] {
     def owner: Box[String]
     def apply(in: List[String]): Any
-    def duplicate(newOwner: String): AFuncHolder
-    private[http] var lastSeen: Long = millis
-    def sessionLife = _sessionLife
-    private[this] var _sessionLife = functionLifespan_?
-    protected def setLife(in: Boolean): AFuncHolder = {
-      _sessionLife = in
-      this
-    }
+    def apply(in: FileParamHolder): Any
+    def supportsFileParams_? : Boolean = false
+    def duplicate(newOwner: String): AFuncHolder = new ProxyFuncHolder(this, Full(newOwner))
+    @volatile private[http] var lastSeen: Long = millis
+    def sessionLife: Boolean = _sessionLife
+    private[this] val _sessionLife: Boolean = functionLifespan_?
+  }
+
+  private[http] class ProxyFuncHolder(proxyTo: AFuncHolder,_owner: Box[String]) extends AFuncHolder {
+    def this(proxyTo: AFuncHolder) = this(proxyTo, Empty)
+
+  def owner: Box[String] = _owner or proxyTo.owner
+    def apply(in: List[String]): Any = proxyTo.apply(in)
+    def apply(in: FileParamHolder): Any = proxyTo.apply(in)
+    def supportsFileParams_? : Boolean = proxyTo.supportsFileParams_?
+    def duplicate(newOwner: String): AFuncHolder = new ProxyFuncHolder(proxyTo, Full(newOwner))
+    private[http] def lastSeen: Long = proxyTo.lastSeen
+    private[http] def lastSeen_=(when: Long) = proxyTo.lastSeen = when
+    override def sessionLife = proxyTo.sessionLife
   }
 
   /**
    * Impersonates a function that will be called when uploading files
    */
   @serializable
-  final class BinFuncHolder(val func: FileParamHolder => Any, val owner: Box[String]) extends AFuncHolder {
+  private final class BinFuncHolder(val func: FileParamHolder => Any, val owner: Box[String]) extends AFuncHolder {
     def apply(in: List[String]) {Log.error("You attempted to call a 'File Upload' function with a normal parameter.  Did you forget to 'enctype' to 'multipart/form-data'?")}
     def apply(in: FileParamHolder) = func(in)
-    def duplicate(newOwner: String) = (new BinFuncHolder(func, Full(newOwner))).setLife(sessionLife)
+    override def supportsFileParams_? : Boolean = true
   }
 
   object BinFuncHolder {
-    def apply(func: FileParamHolder => Any) = new BinFuncHolder(func, Empty)
-    def apply(func: FileParamHolder => Any, owner: Box[String]) = new BinFuncHolder(func, owner)
+    def apply(func: FileParamHolder => Any): AFuncHolder = new BinFuncHolder(func, Empty)
+    def apply(func: FileParamHolder => Any, owner: Box[String]): AFuncHolder = new BinFuncHolder(func, owner)
   }
 
   object SFuncHolder {
-    def apply(func: String => Any) = new SFuncHolder(func, Empty)
-    def apply(func: String => Any, owner: Box[String]) = new SFuncHolder(func, owner)
+    def apply(func: String => Any): AFuncHolder = new SFuncHolder(func, Empty)
+    def apply(func: String => Any, owner: Box[String]): AFuncHolder = new SFuncHolder(func, owner)
   }
 
   /**
@@ -1816,15 +1827,14 @@ object S extends HasParams {
    * takes a String as the only parameter and returns an Any.
    */
   @serializable
-  final class SFuncHolder(val func: String => Any, val owner: Box[String]) extends AFuncHolder {
+  private final class SFuncHolder(val func: String => Any, val owner: Box[String]) extends AFuncHolder {
     def this(func: String => Any) = this(func, Empty)
     def apply(in: List[String]): Any = in.firstOption.toList.map(func(_))
-    def duplicate(newOwner: String) = (new SFuncHolder(func, Full(newOwner))).setLife(sessionLife)
   }
 
   object LFuncHolder {
-    def apply(func: List[String] => Any) = new LFuncHolder(func, Empty)
-    def apply(func: List[String] => Any, owner: Box[String]) = new LFuncHolder(func, owner)
+    def apply(func: List[String] => Any): AFuncHolder = new LFuncHolder(func, Empty)
+    def apply(func: List[String] => Any, owner: Box[String]): AFuncHolder = new LFuncHolder(func, owner)
   }
 
   /**
@@ -1832,14 +1842,13 @@ object S extends HasParams {
    * takes a List[String] as the only parameter and returns an Any.
    */
   @serializable
-  final class LFuncHolder(val func: List[String] => Any,val owner: Box[String]) extends AFuncHolder {
+  private final class LFuncHolder(val func: List[String] => Any,val owner: Box[String]) extends AFuncHolder {
     def apply(in: List[String]): Any = func(in)
-    def duplicate(newOwner: String) = (new LFuncHolder(func, Full(newOwner))).setLife(sessionLife)
   }
 
   object NFuncHolder {
-    def apply(func: () => Any) = new NFuncHolder(func, Empty)
-    def apply(func: () => Any, owner: Box[String]) = new NFuncHolder(func, owner)
+    def apply(func: () => Any): AFuncHolder = new NFuncHolder(func, Empty)
+    def apply(func: () => Any, owner: Box[String]): AFuncHolder = new NFuncHolder(func, owner)
   }
 
   /**
@@ -1847,9 +1856,8 @@ object S extends HasParams {
    * takes zero arguments and returns an Any.
    */
   @serializable
-  final class NFuncHolder(val func: () => Any,val owner: Box[String]) extends AFuncHolder {
+  private final class NFuncHolder(val func: () => Any,val owner: Box[String]) extends AFuncHolder {
     def apply(in: List[String]): Any = in.firstOption.toList.map(s => func())
-    def duplicate(newOwner: String) = (new NFuncHolder(func, Full(newOwner))).setLife(sessionLife)
   }
 
   /**
