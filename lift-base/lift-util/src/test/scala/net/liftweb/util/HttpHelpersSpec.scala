@@ -4,7 +4,7 @@ import _root_.org.specs.specification._
 
 object HttpHelpersSpec extends Specification with HttpHelpers with ListHelpers with StringHelpers {
 
-  "Http helpers" should provide {
+  "Http helpers" should {
     "urlEncode and urlDecode functions" >> {
       urlDecode(urlEncode("hello world")) must_== "hello world"
       urlEncode(urlDecode("hello+world")) must_== "hello+world"
@@ -70,6 +70,6 @@ object HttpHelpersSpec extends Specification with HttpHelpers with ListHelpers w
       }
     }
   }
-  def provide(e: =>Example) = { currentSus.verb += " provide"; e }
+ // currentSus is no longer part of Specification in 1.6  def provide(e: =>Example) = { currentSus.verb += " provide"; e }
 }
 class HttpHelpersSpecTest extends _root_.org.specs.runner.JUnit4(HttpHelpersSpec)

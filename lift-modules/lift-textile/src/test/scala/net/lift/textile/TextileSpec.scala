@@ -213,8 +213,8 @@ DE:
       val (time, res) = Helpers.calcTime{
 	toHtml(s)
       }
-      
-      time must be < (if (shouldRelax) 10000L else 3000L)
+      val cmp: Long =  (if (shouldRelax) 10000L else 3000L)
+      time must be_<( cmp)
     }
 
     "Fast 2" in {
@@ -445,7 +445,7 @@ We use CSS(Cascading Style Sheets).
 	toHtml(s)
       }
 
-      time must be < (if (shouldRelax) 10000L else 3000L)
+      time must be_< (if (shouldRelax) 10000L else 3000L)
     }
 
 
