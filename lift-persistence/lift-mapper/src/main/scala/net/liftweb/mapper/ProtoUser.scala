@@ -156,10 +156,10 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser[ModelType]] extends KeyedMeta
     loggedIn_? _,
     () => {
       import net.liftweb.http.{RedirectWithState, RedirectState}
-      val uri = S.uri
+      val uri = S.uriAndQueryString
       RedirectWithState(
         loginPageURL,
-        RedirectState( ()=>{loginRedirect.set(Full(uri))})
+        RedirectState( ()=>{loginRedirect.set(uri)})
       )
     }
   )

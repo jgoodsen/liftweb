@@ -716,6 +716,21 @@ object S extends HasParams {
    */
   def uri: String = request.map(_.uri).openOr("/")
 
+/**
+* Returns the query string for the current request
+*/
+def queryString: Box[String] =
+for {
+  req <- request
+  queryString <- req.request.queryString
+} yield queryString
+
+
+def uriAndQueryString: Box[String] =
+for {
+  req <- this.request
+} yield req.uri + (queryString.map(s => "?"+s) openOr "")
+
   /**
    * Redirects the browser to a given URL. Note that the underlying mechanism for redirects is to
    * throw a ResponseShortcutException, so if you're doing the redirect within a try/catch block,
