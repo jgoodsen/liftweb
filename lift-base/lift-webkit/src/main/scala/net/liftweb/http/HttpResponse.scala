@@ -42,9 +42,13 @@ trait HeaderStuff {
  */
 case class CreatedResponse(xml: Node, mime: String) extends NodeResponse {
   def docType = Empty
+
   def code = 201
+
   def headers = List("Content-Type" -> mime)
+
   def cookies = Nil
+
   def out = xml
 }
 
@@ -109,11 +113,11 @@ object Qop extends Enumeration(0, "auth", "auth-int", "auth,auth-int") {
  */
 case class UnauthorizedDigestResponse(override val realm: String, qop: Qop.Value, nonce: String, opaque: String) extends UnauthorizedResponse(realm) {
   override def toResponse = InMemoryResponse(Array(), List("WWW-Authenticate" -> (
-        "Digest realm=\"" + realm + "\", " +
-        "qop=\"" + qop + "\", " +
-        "nonce=\"" + nonce + "\", " +
-        "opaque=\"" + opaque + "\""
-      )), Nil, 401)
+          "Digest realm=\"" + realm + "\", " +
+                  "qop=\"" + qop + "\", " +
+                  "nonce=\"" + nonce + "\", " +
+                  "opaque=\"" + opaque + "\""
+          )), Nil, 401)
 }
 
 object ForbiddenResponse {
@@ -254,30 +258,34 @@ object JsonResponse extends HeaderStuff {
 }
 
 case class JsonResponse(json: JsExp, headers: List[(String, String)], cookies: List[HTTPCookie], code: Int) extends LiftResponse {
-	def toResponse = {
-		val bytes = json.toJsCmd.getBytes("UTF-8")
-		InMemoryResponse(bytes, ("Content-Length", bytes.length.toString) :: ("Content-Type", "application/json; charset=utf-8") :: headers, cookies, code)
-	}
+  def toResponse = {
+    val bytes = json.toJsCmd.getBytes("UTF-8")
+    InMemoryResponse(bytes, ("Content-Length", bytes.length.toString) :: ("Content-Type", "application/json; charset=utf-8") :: headers, cookies, code)
+  }
 }
 
 sealed trait BasicResponse extends LiftResponse {
   def headers: List[(String, String)]
+
   def cookies: List[HTTPCookie]
+
   def code: Int
+
   def size: Long
 }
 
 final case class InMemoryResponse(data: Array[Byte], headers: List[(String, String)], cookies: List[HTTPCookie], code: Int) extends BasicResponse {
   def toResponse = this
+
   def size = data.length
 
-  override def toString="InMemoryResponse("+(new String(data, "UTF-8"))+", "+headers+", "+cookies+", "+code+")"
+  override def toString = "InMemoryResponse(" + (new String(data, "UTF-8")) + ", " + headers + ", " + cookies + ", " + code + ")"
 }
 
 final case class StreamingResponse(data: {def read(buf: Array[Byte]): Int}, onEnd: () => Unit, size: Long, headers: List[(String, String)], cookies: List[HTTPCookie], code: Int) extends BasicResponse {
   def toResponse = this
 
-  override def toString="StreamingResponse( steaming_data , "+headers+", "+cookies+", "+code+")"
+  override def toString = "StreamingResponse( steaming_data , " + headers + ", " + cookies + ", " + code + ")"
 }
 
 case class RedirectResponse(uri: String, cookies: HTTPCookie*) extends LiftResponse {
@@ -286,21 +294,21 @@ case class RedirectResponse(uri: String, cookies: HTTPCookie*) extends LiftRespo
 }
 
 object DoRedirectResponse {
-  def apply(url: String): LiftResponse = RedirectResponse(url, Nil :_*)
+  def apply(url: String): LiftResponse = RedirectResponse(url, Nil: _*)
 }
 
-case class RedirectWithState(override val uri: String, state : RedirectState, override val cookies: HTTPCookie*) extends  RedirectResponse(uri, cookies:_*)
+case class RedirectWithState(override val uri: String, state: RedirectState, override val cookies: HTTPCookie*) extends RedirectResponse(uri, cookies: _*)
 
 object RedirectState {
-  def apply(f: () => Unit, msgs: (String, NoticeType.Value)*): RedirectState = new RedirectState(Full(f), msgs :_*)
+  def apply(f: () => Unit, msgs: (String, NoticeType.Value)*): RedirectState = new RedirectState(Full(f), msgs: _*)
 }
-case class RedirectState(func: Box[() => Unit], msgs : (String, NoticeType.Value)*)
+case class RedirectState(func: Box[() => Unit], msgs: (String, NoticeType.Value)*)
 
 object MessageState {
-  implicit def tuple2MessageState(msg : (String, NoticeType.Value)) = MessageState(msg)
+  implicit def tuple2MessageState(msg: (String, NoticeType.Value)) = MessageState(msg)
 }
 
-case class MessageState(override val msgs: (String, NoticeType.Value)*) extends RedirectState(Empty, msgs :_*)
+case class MessageState(override val msgs: (String, NoticeType.Value)*) extends RedirectState(Empty, msgs: _*)
 
 /**
  * Stock XHTML doctypes available to the lift programmer.
@@ -328,6 +336,7 @@ object ResponseInfo {
 
 object PlainTextResponse {
   def apply(text: String): PlainTextResponse = PlainTextResponse(text, Nil, 200)
+
   def apply(text: String, code: Int): PlainTextResponse = PlainTextResponse(text, Nil, code)
 }
 
@@ -340,6 +349,7 @@ case class PlainTextResponse(text: String, headers: List[(String, String)], code
 
 object CSSResponse {
   def apply(text: String): CSSResponse = CSSResponse(text, Nil, 200)
+
   def apply(text: String, code: Int): CSSResponse = CSSResponse(text, Nil, code)
 }
 
@@ -352,11 +362,17 @@ case class CSSResponse(text: String, headers: List[(String, String)], code: Int)
 
 trait NodeResponse extends LiftResponse {
   def out: Node
+
   def headers: List[(String, String)]
+
   def cookies: List[HTTPCookie]
+
   def code: Int
+
   def docType: Box[String]
+
   def renderInIEMode: Boolean = false
+
   def includeXmlVersion = true
 
   val isIE6 = LiftRules.calcIE6ForResponse()
@@ -365,23 +381,23 @@ trait NodeResponse extends LiftResponse {
 
   def toResponse = {
     val encoding: String = if (!includeXmlVersion) "" else
-    (out, headers.ciGet("Content-Type")) match {
-      case (up: Unparsed,  _) => ""
+      (out, headers.ciGet("Content-Type")) match {
+        case (up: Unparsed, _) => ""
 
-      case (_, Empty) | (_, Failure(_, _, _)) =>
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        case (_, Empty) | (_, Failure(_, _, _)) =>
+          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 
-      case (_, Full(s)) if (s.toLowerCase.startsWith("text/html")) =>
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        case (_, Full(s)) if (s.toLowerCase.startsWith("text/html")) =>
+          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 
-      case (_, Full(s)) if (s.toLowerCase.startsWith("text/xml") ||
-                            s.toLowerCase.startsWith("text/xhtml") ||
-                            s.toLowerCase.startsWith("application/xml") ||
-                            s.toLowerCase.startsWith("application/xhtml+xml")) =>
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        case (_, Full(s)) if (s.toLowerCase.startsWith("text/xml") ||
+                s.toLowerCase.startsWith("text/xhtml") ||
+                s.toLowerCase.startsWith("application/xml") ||
+                s.toLowerCase.startsWith("application/xhtml+xml")) =>
+          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 
-      case _ => ""
-    }
+        case _ => ""
+      }
 
     val doc = docType.map(_ + "\n") openOr ""
 
@@ -395,7 +411,7 @@ trait NodeResponse extends LiftResponse {
       sb.append(doc)
     }
     AltXML.toXML(out, _root_.scala.xml.TopScope,
-                 sb, false, false, renderInIEMode)
+      sb, false, false, renderInIEMode)
 
     sb.append("  \n  ")
 
@@ -411,6 +427,7 @@ case class XhtmlResponse(out: Node, docType: Box[String],
                          code: Int,
                          override val renderInIEMode: Boolean) extends NodeResponse {
   private[http] var _includeXmlVersion = true
+
   override def includeXmlVersion = _includeXmlVersion
 
   override def flipDocTypeForIE6 = LiftRules.flipDocTypeForIE6
@@ -423,17 +440,25 @@ case class XhtmlResponse(out: Node, docType: Box[String],
  */
 case class XmlMimeResponse(xml: Node, mime: String) extends NodeResponse {
   def docType = Empty
+
   def code = 200
+
   def headers = List("Content-Type" -> mime)
+
   def cookies = Nil
+
   def out = xml
 }
 
 case class XmlResponse(xml: Node) extends NodeResponse {
   def docType = Empty
+
   def code = 200
+
   def headers = List("Content-Type" -> "text/xml; charset=utf-8")
+
   def cookies = Nil
+
   def out = xml
 }
 
@@ -442,9 +467,13 @@ case class XmlResponse(xml: Node) extends NodeResponse {
  */
 case class AtomResponse(xml: Node) extends NodeResponse {
   def docType = Empty
+
   def code = 200
+
   def headers = List("Content-Type" -> "application/atom+xml; charset=utf-8")
+
   def cookies = Nil
+
   def out = xml
 }
 
@@ -453,9 +482,13 @@ case class AtomResponse(xml: Node) extends NodeResponse {
  */
 case class OpenSearchResponse(xml: Node) extends NodeResponse {
   def docType = Empty
+
   def code = 200
+
   def headers = List("Content-Type" -> "application/opensearchdescription+xml; charset=utf-8")
+
   def cookies = Nil
+
   def out = xml
 }
 

@@ -34,7 +34,7 @@ trait ServletFilterProvider extends Filter with HTTPProvider {
    */
   def doFilter(req: ServletRequest, res: ServletResponse, chain: FilterChain) = {
     RequestVarHandler(Empty,
-                      (req, res) match {
+      (req, res) match {
         case (httpReq: HttpServletRequest, httpRes: HttpServletResponse) =>
           val httpRequest = new HTTPRequestServlet(httpReq)
           val httpResponse = new HTTPResponseServlet(httpRes)

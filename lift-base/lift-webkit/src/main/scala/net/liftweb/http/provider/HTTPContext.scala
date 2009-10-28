@@ -34,7 +34,7 @@ trait HTTPContext {
   /**
    * Returns the URL representation of a resource that is mapped by a fully qualified path.
    * The path is considered relative to the root path and it always starts with '/'.
-   * 
+   *
    * @param path - the resource path
    * @return - the URL object of the path
    */
@@ -55,8 +55,8 @@ trait HTTPContext {
 
   /**
    * @param name
-   * @return - the value of the init parameter identified by then provided name. Note 
-   *           that this is not typesfe and you need to explicitely do the casting 
+   * @return - the value of the init parameter identified by then provided name. Note
+   *           that this is not typesfe and you need to explicitely do the casting
    *           when reading this attribute. Returns Empty if this parameter does not exist.
    */
   def initParam(name: String): Box[String]
@@ -68,8 +68,8 @@ trait HTTPContext {
 
   /**
    * @param name
-   * @return - the value of the context attribute identified by then provided name. 
-   *           Returns Empty if this parameter does not exist. 
+   * @return - the value of the context attribute identified by then provided name.
+   *           Returns Empty if this parameter does not exist.
    */
   def attribute(name: String): Box[Any]
 

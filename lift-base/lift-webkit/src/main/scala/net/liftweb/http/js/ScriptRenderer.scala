@@ -96,115 +96,114 @@ object ScriptRenderer {
     lift_registerGC: function() {
       var data = "__lift__GC=_"
       """ + LiftRules.jsArtifacts.ajax(AjaxInfo(JE.JsRaw("data"),
-                                                         "POST",
-                                                         LiftRules.ajaxPostTimeout,
-                                                         false, "script",
-                                                         Full("liftAjax.lift_successRegisterGC"), Full("liftAjax.lift_failRegisterGC"))) +
-      """
-    },
+    "POST",
+    LiftRules.ajaxPostTimeout,
+    false, "script",
+    Full("liftAjax.lift_successRegisterGC"), Full("liftAjax.lift_failRegisterGC"))) +
+          """
+       },
 
-    lift_doAjaxCycle: function() {
-      var queue = liftAjax.lift_ajaxQueue;
-      if (queue.length > 0) {
-        var now = (new Date()).getTime();
-        if (liftAjax.lift_ajaxInProcess == null && queue[0].when <= now) {
-          var aboutToSend = queue.shift();
+       lift_doAjaxCycle: function() {
+         var queue = liftAjax.lift_ajaxQueue;
+         if (queue.length > 0) {
+           var now = (new Date()).getTime();
+           if (liftAjax.lift_ajaxInProcess == null && queue[0].when <= now) {
+             var aboutToSend = queue.shift();
 
-          lift_ajaxInProcess = aboutToSend;
+             lift_ajaxInProcess = aboutToSend;
 
-          var successFunc = function(data) {
-            liftAjax.lift_ajaxInProcess = null;
-            if (aboutToSend.onSuccess) {
-              aboutToSend.onSuccess(data);
+             var successFunc = function(data) {
+               liftAjax.lift_ajaxInProcess = null;
+               if (aboutToSend.onSuccess) {
+                 aboutToSend.onSuccess(data);
+               }
+               liftAjax.lift_doAjaxCycle();
+             };
+
+             var failureFunc = function() {
+               liftAjax.lift_ajaxInProcess = null;
+               var cnt = aboutToSend.retryCnt;
+               if (cnt < liftAjax.lift_ajaxRetryCount) {
+               aboutToSend.retryCnt = cnt + 1;
+                 var now = (new Date()).getTime();
+                 aboutToSend.when = now + (1000 * Math.pow(2, cnt));
+                 queue.push(aboutToSend);
+                 liftAjax.lift_ajaxQueueSort();
+               } else {
+                 if (aboutToSend.onFailure) {
+                   aboutToSend.onFailure();
+                 } else {
+                   liftAjax.lift_defaultFailure();
+                 }
+               }
+               liftAjax.lift_doAjaxCycle();
+             };
+
+             if (aboutToSend.responseType != undefined &&
+                 aboutToSend.responseType != null &&
+                 aboutToSend.responseType.toLowerCase() === "json") {
+               liftAjax.lift_actualJSONCall(aboutToSend.theData, successFunc, failureFunc);
+             } else {
+               liftAjax.lift_actualAjaxCall(aboutToSend.theData, successFunc, failureFunc);
+             }
             }
-            liftAjax.lift_doAjaxCycle();
-          };
-
-          var failureFunc = function() {
-            liftAjax.lift_ajaxInProcess = null;
-            var cnt = aboutToSend.retryCnt;
-            if (cnt < liftAjax.lift_ajaxRetryCount) {
-	          aboutToSend.retryCnt = cnt + 1;
-              var now = (new Date()).getTime();
-              aboutToSend.when = now + (1000 * Math.pow(2, cnt));
-              queue.push(aboutToSend);
-              liftAjax.lift_ajaxQueueSort();
-            } else {
-              if (aboutToSend.onFailure) {
-                aboutToSend.onFailure();
-              } else {
-                liftAjax.lift_defaultFailure();
-              }
-            }
-            liftAjax.lift_doAjaxCycle();
-          };
-
-          if (aboutToSend.responseType != undefined &&
-              aboutToSend.responseType != null &&
-              aboutToSend.responseType.toLowerCase() === "json") {
-            liftAjax.lift_actualJSONCall(aboutToSend.theData, successFunc, failureFunc);
-          } else {
-            liftAjax.lift_actualAjaxCall(aboutToSend.theData, successFunc, failureFunc);
-          }
          }
-      }
 
-      liftAjax.lift_testAndShowAjax();
-      setTimeout("liftAjax.lift_doAjaxCycle();", 200);
-    },
+         liftAjax.lift_testAndShowAjax();
+         setTimeout("liftAjax.lift_doAjaxCycle();", 200);
+       },
 
-    addPageName: function(url) {
-      return """ + {
-    	if (LiftRules.enableLiftGC) {
-          "url.replace('" + LiftRules.ajaxPath + "', '" + LiftRules.ajaxPath + "/'+lift_page);"
-        } else {
-          "url;"
-        }
-      } + """
+       addPageName: function(url) {
+         return """ + {
+    if (LiftRules.enableLiftGC) {
+      "url.replace('" + LiftRules.ajaxPath + "', '" + LiftRules.ajaxPath + "/'+lift_page);"
+    } else {
+      "url;"
+    }
+  } + """
     },
 
     lift_actualAjaxCall: function(data, onSuccess, onFailure) {
       """ +
-        LiftRules.jsArtifacts.ajax(AjaxInfo(JE.JsRaw("data"),
-                                                     "POST",
-                                                     LiftRules.ajaxPostTimeout,
-                                                     false, "script",
-                                                     Full("onSuccess"), Full("onFailure")))+
-    """
-    },
+          LiftRules.jsArtifacts.ajax(AjaxInfo(JE.JsRaw("data"),
+            "POST",
+            LiftRules.ajaxPostTimeout,
+            false, "script",
+            Full("onSuccess"), Full("onFailure"))) +
+          """
+        },
 
-    lift_actualJSONCall: function(data, onSuccess, onFailure) {
-      """ +
-        LiftRules.jsArtifacts.ajax(AjaxInfo(JE.JsRaw("data"),
-                                                     "POST",
-                                                     LiftRules.ajaxPostTimeout,
-                                                     false, "json",
-                                                     Full("onSuccess"), Full("onFailure")))+
-    """
-    }
-  };
+        lift_actualJSONCall: function(data, onSuccess, onFailure) {
+          """ +
+          LiftRules.jsArtifacts.ajax(AjaxInfo(JE.JsRaw("data"),
+            "POST",
+            LiftRules.ajaxPostTimeout,
+            false, "json",
+            Full("onSuccess"), Full("onFailure"))) +
+          """
+              }
+            };
 
-  window.liftUtils = {
-    lift_blurIfReturn: function(e) {
-      var code;
-      if (!e) var e = window.event;
-      if (e.keyCode) code = e.keyCode;
-      else if (e.which) code = e.which;
+            window.liftUtils = {
+              lift_blurIfReturn: function(e) {
+                var code;
+                if (!e) var e = window.event;
+                if (e.keyCode) code = e.keyCode;
+                else if (e.which) code = e.which;
 
-      var targ;
+                var targ;
 
-      if (e.target) targ = e.target;
-      else if (e.srcElement) targ = e.srcElement;
-      if (targ.nodeType == 3) // defeat Safari bug
-        targ = targ.parentNode;
-      if (code == 13) {targ.blur(); return false;} else {return true;};
-    }
-  };
+                if (e.target) targ = e.target;
+                else if (e.srcElement) targ = e.srcElement;
+                if (targ.nodeType == 3) // defeat Safari bug
+                  targ = targ.parentNode;
+                if (code == 13) {targ.blur(); return false;} else {return true;};
+              }
+            };
 
 
-})();
-""" + LiftRules.jsArtifacts.onLoad(new JsCmd() {def toJsCmd = "liftAjax.lift_doAjaxCycle()"}).toJsCmd)
-
+          })();
+          """ + LiftRules.jsArtifacts.onLoad(new JsCmd() {def toJsCmd = "liftAjax.lift_doAjaxCycle()"}).toJsCmd)
 
 
   /**
@@ -223,20 +222,20 @@ object ScriptRenderer {
 
       lift_cometEntry: function() {
         """ +
-            LiftRules.jsArtifacts.comet(AjaxInfo(JE.JsRaw("lift_toWatch"),
-                                                          "GET",
-                                                           LiftRules.cometGetTimeout,
-                                                           false,
-                                                           "script",
-                                                           Full("liftComet.lift_handlerSuccessFunc"),
-                                                           Full("liftComet.lift_handlerFailureFunc"))) +
-        """
-      }
-    }
-  })();
-  """ +
+          LiftRules.jsArtifacts.comet(AjaxInfo(JE.JsRaw("lift_toWatch"),
+            "GET",
+            LiftRules.cometGetTimeout,
+            false,
+            "script",
+            Full("liftComet.lift_handlerSuccessFunc"),
+            Full("liftComet.lift_handlerFailureFunc"))) +
+          """
+              }
+            }
+          })();
+          """ +
 
-      LiftRules.jsArtifacts.onLoad(new JsCmd() {
-        def toJsCmd = "liftComet.lift_handlerSuccessFunc()"
-      }).toJsCmd)
+          LiftRules.jsArtifacts.onLoad(new JsCmd() {
+            def toJsCmd = "liftComet.lift_handlerSuccessFunc()"
+          }).toJsCmd)
 }

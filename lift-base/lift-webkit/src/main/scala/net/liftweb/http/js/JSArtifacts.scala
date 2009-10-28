@@ -78,7 +78,7 @@ trait JSArtifacts {
   /**
    * Trabsforms a JSON object intoits string representation
    */
-  def jsonStringify(in: JsExp) : JsExp
+  def jsonStringify(in: JsExp): JsExp
 
   /**
    * Converts a form denominated by formId into a JSON object
@@ -92,32 +92,32 @@ trait JSArtifacts {
  */
 object AjaxInfo {
   def apply(data: JsExp, post: Boolean) =
-  new AjaxInfo(data, if (post) "POST" else "GET", 1000, false, "script", Empty, Empty)
+    new AjaxInfo(data, if (post) "POST" else "GET", 1000, false, "script", Empty, Empty)
 
   def apply(data: JsExp,
             dataType: String,
             post: Boolean) =
-  new AjaxInfo(data, if (post) "POST" else "GET", 1000, false, dataType, Empty, Empty)
+    new AjaxInfo(data, if (post) "POST" else "GET", 1000, false, dataType, Empty, Empty)
 
   def apply(data: JsExp) =
-  new AjaxInfo(data, "POST", 1000, false, "script", Empty, Empty)
+    new AjaxInfo(data, "POST", 1000, false, "script", Empty, Empty)
 
   def apply(data: JsExp,
             dataType: String) =
-  new AjaxInfo(data, "POST", 1000, false, dataType, Empty, Empty)
+    new AjaxInfo(data, "POST", 1000, false, dataType, Empty, Empty)
 
   def apply(data: JsExp,
             post: Boolean,
             timeout: Long,
             successFunc: String,
             failFunc: String) =
-  new AjaxInfo(data,
-               if (post) "POST" else "GET",
-               timeout,
-               false,
-               "script",
-               Full(successFunc),
-               Full(failFunc))
+    new AjaxInfo(data,
+      if (post) "POST" else "GET",
+      timeout,
+      false,
+      "script",
+      Full(successFunc),
+      Full(failFunc))
 }
 
 /**

@@ -33,32 +33,32 @@ import _root_.scala.xml.{NodeSeq, Elem}
  * cause the registerThisSnippet method to be called and the same instance will
  * be used on the target page.
  * <pre>
- * class CountGame extends StatefulSnippet {
- *  val dispatch: DispatchIt = {
+ * class CountGame extends StatefulSnippet  {
+ *  val dispatch: DispatchIt =  {
  *    case "run" => run _
- *  }
+ * }
  *
- *  def run(xhtml: NodeSeq): NodeSeq = {
- *    if (lastGuess == number) {
+ *  def run(xhtml: NodeSeq): NodeSeq =  {
+ *    if (lastGuess == number)  {
  *      bind("count", chooseTemplate("choose", "win", xhtml), "number" --> number, "count" --> count)
- *    } else {
+ * } else  {
  *      bind("count", chooseTemplate("choose", "guess", xhtml),
  *        "input" --> text("", guess _),
  *        "last" --> lastGuess.map(v => if (v < number) v+" is low" else v+"is high").openOr("Make first Guess")
  *      )
- *    }
+ * }
  *
- *  private def guess(in: String) {
+ *  private def guess(in: String)  {
  *    count += 1
  *    lastGuess = Full(toInt(in))
- *  }
+ * }
  *
  *  private val number = 1 + randomInt(100)
  *  private var lastGuess: Box[Int] = Empty
  *  private var count = 0
  *
- *}
- *</pre>
+ * }
+ * </pre>
  */
 trait StatefulSnippet extends DispatchSnippet {
   private[http] var snippetName: String = ""

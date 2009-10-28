@@ -31,12 +31,11 @@ import _root_.scala.collection.mutable.{HashMap}
  *
  */
 trait HttpAuthentication {
-
   def header(r: Req): Box[String] = r.request.header("Authorization")
 
   def verified_? : PartialFunction[Req, Boolean]
 
-  def realm : String = ""
+  def realm: String = ""
 
   def unauthorizedResponse: UnauthorizedResponse = UnauthorizedResponse(realm)
 
@@ -56,27 +55,28 @@ object userRoles extends RequestVar[List[Role]](Nil)
  * Base64 encoded input from the http client.
  */
 case class HttpBasicAuthentication(realmName: String)(func: PartialFunction[(String, String, Req), Boolean]) extends HttpAuthentication {
-
   def credentials(r: Req): Box[(String, String)] = {
     header(r).flatMap(auth => {
-        val decoded = new String(Base64.decodeBase64(auth.substring(6,auth.length).getBytes)).split(":").toList
-        decoded match {
-          case userName :: password :: _ => Full((userName, password))
-          case userName :: Nil => Full((userName, ""))
-          case _ => Empty
-        }
+      val decoded = new String(Base64.decodeBase64(auth.substring(6, auth.length).getBytes)).split(":").toList
+      decoded match {
+        case userName :: password :: _ => Full((userName, password))
+        case userName :: Nil => Full((userName, ""))
+        case _ => Empty
       }
-    )}
+    }
+      )
+  }
 
   override def realm = realmName
 
-  def verified_? = {case (req) => {
-        credentials(req) match {
-          case Full((user, pwd)) if (func.isDefinedAt(user, pwd, req)) =>
-            func(user, pwd, req)
-          case _ => false
-        }
+  def verified_? = {
+    case (req) => {
+      credentials(req) match {
+        case Full((user, pwd)) if (func.isDefinedAt(user, pwd, req)) =>
+          func(user, pwd, req)
+        case _ => false
       }
+    }
   }
 
 }
@@ -89,25 +89,25 @@ case class HttpDigestAuthentication(realmName: String)(func: PartialFunction[(St
 
   object NonceWatcher extends LiftActor {
     private var keepPinging = true
+
     protected def messageHandler =
-    {
-      case CheckAndPurge =>
-        if (keepPinging) doPing()
-        nonceMap.foreach((entry) => {
+      {
+        case CheckAndPurge =>
+          if (keepPinging) doPing()
+          nonceMap.foreach((entry) => {
             val ts = System.currentTimeMillis
             if ((ts - entry._2) > nonceValidityPeriod) {
               nonceMap -= entry._1
             }
           })
 
-      case ShutDown => keepPinging = false
-    }
-      
-    
+        case ShutDown => keepPinging = false
+      }
+
 
     private[auth] def doPing() {
       try {
-        ActorPing schedule(this, CheckAndPurge, 5 seconds)
+        ActorPing schedule (this, CheckAndPurge, 5 seconds)
       } catch {
         case e => Log.error("Couldn't start NonceWatcher ping", e)
       }
@@ -121,13 +121,13 @@ case class HttpDigestAuthentication(realmName: String)(func: PartialFunction[(St
 
   def getInfo(req: Req): Box[DigestAuthentication] = header(req).map(auth => {
 
-      val info = auth.substring(7,auth.length)
-      val pairs = splitNameValuePairs(info)
-      DigestAuthentication(req.request.method.toUpperCase, pairs("username"), pairs("realm"), pairs("nonce"),
-                           pairs("uri"), pairs("qop"), pairs("nc"),
-                           pairs("cnonce"), pairs("response"), pairs("opaque"))
-    }
-  )
+    val info = auth.substring(7, auth.length)
+    val pairs = splitNameValuePairs(info)
+    DigestAuthentication(req.request.method.toUpperCase, pairs("username"), pairs("realm"), pairs("nonce"),
+      pairs("uri"), pairs("qop"), pairs("nc"),
+      pairs("cnonce"), pairs("response"), pairs("opaque"))
+  }
+    )
 
   /**
    * The period in milli seconds during which the nonce sent by server is valid. After this period
@@ -147,31 +147,33 @@ case class HttpDigestAuthentication(realmName: String)(func: PartialFunction[(St
     UnauthorizedDigestResponse(realm, Qop.AUTH, nonce, randomString(64))
   }
 
-  def verified_? = {case (req) => {
-        getInfo(req) match {
-          case Full(auth) if (func.isDefinedAt((auth.userName, req, validate(auth) _))) =>
-            func((auth.userName, req, validate(auth) _)) match {
-              case true =>
-                val ts = System.currentTimeMillis
-                val nonceCreationTime: Long = nonceMap.getOrElse(auth.nonce, -1)
-                nonceCreationTime match {
-                  case -1 => false
-                  case _ =>
-                    (ts - nonceCreationTime) < nonceValidityPeriod
-                }
-              case _ => false
-            }
-          case _ => false
-        }
-      }}
+  def verified_? = {
+    case (req) => {
+      getInfo(req) match {
+        case Full(auth) if (func.isDefinedAt((auth.userName, req, validate(auth) _))) =>
+          func((auth.userName, req, validate(auth) _)) match {
+            case true =>
+              val ts = System.currentTimeMillis
+              val nonceCreationTime: Long = nonceMap.getOrElse(auth.nonce, -1)
+              nonceCreationTime match {
+                case -1 => false
+                case _ =>
+                  (ts - nonceCreationTime) < nonceValidityPeriod
+              }
+            case _ => false
+          }
+        case _ => false
+      }
+    }
+  }
 
   private def validate(clientAuth: DigestAuthentication)(password: String): Boolean = {
     val ha1 = hexEncode(md5((clientAuth.userName + ":" + clientAuth.realm + ":" + password).getBytes("UTF-8")))
     val ha2 = hexEncode(md5((clientAuth.method + ":" + clientAuth.uri).getBytes("UTF-8")))
 
     val response = hexEncode(md5((ha1 + ":" + clientAuth.nonce + ":" +
-                                  clientAuth.nc + ":" + clientAuth.cnonce + ":" +
-                                  clientAuth.qop + ":" + ha2).getBytes("UTF-8")));
+            clientAuth.nc + ":" + clientAuth.cnonce + ":" +
+            clientAuth.qop + ":" + ha2).getBytes("UTF-8")));
 
     (response == clientAuth.response) && (nonceMap.getOrElse(clientAuth.nonce, -1) != -1)
   }
@@ -191,6 +193,7 @@ case class DigestAuthentication(method: String,
 
 sealed abstract class AuthenticationScheme {
   def code: String
+
   override def toString = "AuthenticationScheme(" + code + ")"
 }
 case object BasicScheme extends AuthenticationScheme {

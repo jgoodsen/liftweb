@@ -34,7 +34,7 @@ trait Factory extends SimpleInjector {
    * the scope of the call.
    */
   abstract class FactoryMaker[T](_default: () => T)
-  (implicit man: Manifest[T]) extends StackableMaker[T] with Vendor[T] {
+                                (implicit man: Manifest[T]) extends StackableMaker[T] with Vendor[T] {
     registerInjection(this)(man)
 
     /**
@@ -42,8 +42,11 @@ trait Factory extends SimpleInjector {
      */
     object default extends PSettableValueHolder[() => T] {
       private var value = _default
+
       def get = value
+
       def is = get
+
       def set(v: () => T): () => T = {
         value = v
         v

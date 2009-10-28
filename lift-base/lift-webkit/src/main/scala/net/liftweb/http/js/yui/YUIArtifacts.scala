@@ -34,7 +34,6 @@ import JE._
  * event.js
  */
 object YUIArtifacts extends JSArtifacts {
-
   def toggle(id: String) = new JsExp {
     def toJsCmd = "YAHOO.lift.toggle(this, " + id.encJs + ");";
   }
@@ -49,15 +48,15 @@ object YUIArtifacts extends JSArtifacts {
 
   def showAndFocus(id: String) = new JsExp {
     def toJsCmd = "YAHOO.util.Dom.setStyle(" + id.encJs + ", 'display', 'block');" +
-                  "setTimeout(function() { document.getElementById(" + id.encJs + ").focus(); }, 200);"
+            "setTimeout(function() { document.getElementById(" + id.encJs + ").focus(); }, 200);"
   }
 
   def serialize(id: String) = new JsExp {
-    def toJsCmd = "YAHOO.util.Connect.setForm(" + id.encJs +", false)"
+    def toJsCmd = "YAHOO.util.Connect.setForm(" + id.encJs + ", false)"
   }
 
   def setHtml(uid: String, content: NodeSeq): JsCmd = new JsCmd {
-    val toJsCmd = "try{document.getElementById(" + uid.encJs + ").innerHTML = " + fixHtml(uid, content)+";} catch (e) {}"
+    val toJsCmd = "try{document.getElementById(" + uid.encJs + ").innerHTML = " + fixHtml(uid, content) + ";} catch (e) {}"
   }
 
   def onLoad(cmd: JsCmd): JsCmd = new JsCmd {
@@ -68,29 +67,29 @@ object YUIArtifacts extends JSArtifacts {
     val url = S.encodeURL(S.contextPath + "/" + LiftRules.ajaxPath + "/")
 
     "url = YAHOO.lift.buildURI(liftAjax.addPageName(" + url.encJs + ") , " + data.data.toJsCmd + ");" +
-    "YAHOO.util.Connect.asyncRequest(" + data.action.encJs + ", url, " + toJson(data) + ");"
+            "YAHOO.util.Connect.asyncRequest(" + data.action.encJs + ", url, " + toJson(data) + ");"
   }
 
   def comet(data: AjaxInfo): String = {
     val url = LiftRules.calcCometPath(LiftRules.cometServer())
     "url = YAHOO.lift.buildURI(" + url.toJsCmd + ", YAHOO.lift.simpleJsonToQS(" + data.data.toJsCmd + "));" +
-    "YAHOO.util.Connect.asyncRequest(" + data.action.encJs + ", url, " + toJson(data) + ");";
+            "YAHOO.util.Connect.asyncRequest(" + data.action.encJs + ", url, " + toJson(data) + ");";
   }
 
-  def jsonStringify(in: JsExp) : JsExp = new JsExp {
+  def jsonStringify(in: JsExp): JsExp = new JsExp {
     def toJsCmd = "YAHOO.lang.JSON.stringify(" + in.toJsCmd + ")"
   }
 
-  def formToJSON(formId: String):JsExp = new JsExp() {
+  def formToJSON(formId: String): JsExp = new JsExp() {
     def toJsCmd = "YAHOO.lift.formToJSON('" + formId + "')";
   }
 
   private def toJson(info: AjaxInfo): String =
     ("timeout : " + info.timeout ::
-     "cache : " + info.cache ::
-     "success : function(resp) { res = YAHOO.lift.eval(resp);" +  info.successFunc.map(_ + "(res);").openOr("") + "}" ::
-     "failure : " + info.failFunc.openOr ("function (arg) {YAHOO.log('Ajax request failed');}") ::
-     Nil) mkString("{ ", ", ", " }")
+            "cache : " + info.cache ::
+            "success : function(resp) { res = YAHOO.lift.eval(resp);" + info.successFunc.map(_ + "(res);").openOr("") + "}" ::
+            "failure : " + info.failFunc.openOr("function (arg) {YAHOO.log('Ajax request failed');}") ::
+            Nil) mkString ("{ ", ", ", " }")
 
 
 }

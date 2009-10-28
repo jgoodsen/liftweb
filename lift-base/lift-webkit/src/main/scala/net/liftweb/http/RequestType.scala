@@ -20,9 +20,13 @@ import provider._
 @serializable
 abstract class RequestType {
   def post_? : Boolean = false
+
   def get_? : Boolean = false
+
   def head_? : Boolean = false
+
   def put_? : Boolean = false
+
   def delete_? : Boolean = false
 }
 

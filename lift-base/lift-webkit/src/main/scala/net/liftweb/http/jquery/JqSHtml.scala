@@ -31,7 +31,6 @@ import _root_.scala.xml._
  * This contains Html artifacts that are heavily relying on JQuery
  */
 object JqSHtml {
-
   def fadeOutErrors(duration: TimeSpan, fadeTime: TimeSpan): JsCmd = {
     FadeOut(LiftRules.noticesContainerId + "_error", duration, fadeTime)
   }

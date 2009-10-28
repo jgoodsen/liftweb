@@ -34,18 +34,20 @@ import _root_.scala.collection.mutable.{HashMap, ListBuffer}
  */
 abstract class SessionVar[T](dflt: => T) extends AnyVar[T, SessionVar[T]](dflt) {
   override protected def findFunc(name: String): Box[T] = S.session.flatMap(_.get(name))
+
   override protected def setFunc(name: String, value: T): Unit = S.session.foreach(_.set(name, value))
+
   override protected def clearFunc(name: String): Unit = S.session.foreach(_.unset(name))
 
   override protected def wasInitialized(name: String): Boolean = {
-    val bn = name+"_inited_?"
+    val bn = name + "_inited_?"
     val old: Boolean = S.session.flatMap(_.get(bn)) openOr false
     S.session.foreach(_.set(bn, true))
     old
   }
 
   protected override def registerCleanupFunc(in: LiftSession => Unit): Unit =
-  S.session.foreach(_.addSessionCleanup(in))
+    S.session.foreach(_.addSessionCleanup(in))
 
   type CleanUpParam = LiftSession
 }
@@ -62,24 +64,28 @@ abstract class SessionVar[T](dflt: => T) extends AnyVar[T, SessionVar[T]](dflt) 
  */
 abstract class RequestVar[T](dflt: => T) extends AnyVar[T, RequestVar[T]](dflt) {
   type CleanUpParam = Box[LiftSession]
+
   override protected def findFunc(name: String): Box[T] = RequestVarHandler.get(name)
+
   override protected def setFunc(name: String, value: T): Unit = RequestVarHandler.set(name, this, value)
+
   override protected def clearFunc(name: String): Unit = RequestVarHandler.clear(name)
+
   override protected def wasInitialized(name: String): Boolean = {
-    val bn = name+"_inited_?"
+    val bn = name + "_inited_?"
     val old: Boolean = RequestVarHandler.get(bn) openOr false
     RequestVarHandler.set(bn, this, true)
     old
   }
 
   /**
-  * Generate a function that will take a snapshot of the current RequestVars
-  * such that they can be restored
-  */
- final def generateSnapshotRestorer[T](): Function1[Function0[T], T] = RequestVarHandler.generateSnapshotRestorer()
+   * Generate a function that will take a snapshot of the current RequestVars
+   * such that they can be restored
+   */
+  final def generateSnapshotRestorer[T](): Function1[Function0[T], T] = RequestVarHandler.generateSnapshotRestorer()
 
   override protected def registerCleanupFunc(in: Box[LiftSession] => Unit): Unit =
-  RequestVarHandler.addCleanupFunc(in)
+    RequestVarHandler.addCleanupFunc(in)
 }
 
 trait CleanRequestVarOnSessionTransition {
@@ -94,44 +100,44 @@ private[http] object RequestVarHandler {
 
 
   /**
-  * Generate a function that will take a snapshot of the current RequestVars
-  * such that they can be restored
-  */
+   * Generate a function that will take a snapshot of the current RequestVars
+   * such that they can be restored
+   */
   final def generateSnapshotRestorer[T](): Function1[Function0[T], T] =
-  {
-    val myVals = vals.value
-    val mySessionThing = sessionThing.value
+    {
+      val myVals = vals.value
+      val mySessionThing = sessionThing.value
 
-    f => isIn.doWith("in") (
-      vals.doWith(myVals) (
-        cleanup.doWith(new ListBuffer) {
-          sessionThing.doWith(mySessionThing) {
-            val ret: T = f()
+      f => isIn.doWith("in")(
+        vals.doWith(myVals)(
+          cleanup.doWith(new ListBuffer) {
+            sessionThing.doWith(mySessionThing) {
+              val ret: T = f()
 
-            cleanup.value.toList.foreach(clean => Helpers.tryo(clean(sessionThing.value)))
+              cleanup.value.toList.foreach(clean => Helpers.tryo(clean(sessionThing.value)))
 
-            ret
+              ret
+            }
           }
-        }
-      ))
-  }
+          ))
+    }
 
   private[http] def get[T](name: String): Box[T] =
-  for (ht <- Box.legacyNullTest(vals.value);
-       v <- ht.get(name).map(_._2).asInstanceOf[Option[T]]) yield v;
+    for (ht <- Box.legacyNullTest(vals.value);
+         v <- ht.get(name).map(_._2).asInstanceOf[Option[T]]) yield v;
 
 
   private[http] def set[T](name: String, from: RequestVar[_], value: T): Unit =
-  for (ht <- Box.legacyNullTest(vals.value))
-  ht(name) = (from, value)
+    for (ht <- Box.legacyNullTest(vals.value))
+      ht(name) = (from, value)
 
   private[http] def clear(name: String): Unit =
-  for (ht <- Box.legacyNullTest(vals.value))
-  ht -= name
+    for (ht <- Box.legacyNullTest(vals.value))
+      ht -= name
 
   private[http] def addCleanupFunc(f: Box[LiftSession] => Unit): Unit =
-  for (cu <- Box.legacyNullTest(cleanup.value))
-  cu += f
+    for (cu <- Box.legacyNullTest(cleanup.value))
+      cu += f
 
   def apply[T](session: Box[LiftSession], f: => T): T = {
     if ("in" == isIn.value) {
@@ -149,23 +155,24 @@ private[http] object RequestVarHandler {
       sessionThing.set(session)
       f
     } else
-    isIn.doWith("in") (
-      vals.doWith(new HashMap) (
-        cleanup.doWith(new ListBuffer) {
-          sessionThing.doWith(session) {
-            val ret: T = f
+      isIn.doWith("in")(
+        vals.doWith(new HashMap)(
+          cleanup.doWith(new ListBuffer) {
+            sessionThing.doWith(session) {
+              val ret: T = f
 
-            cleanup.value.toList.foreach(clean => Helpers.tryo(clean(sessionThing.value)))
+              cleanup.value.toList.foreach(clean => Helpers.tryo(clean(sessionThing.value)))
 
-            ret
+              ret
+            }
           }
-        }
-      ))
+          ))
   }
 }
 
 
 object AnyVar {
   implicit def whatSessionVarIs[T](in: SessionVar[T]): T = in.is
+
   implicit def whatRequestVarIs[T](in: RequestVar[T]): T = in.is
 }

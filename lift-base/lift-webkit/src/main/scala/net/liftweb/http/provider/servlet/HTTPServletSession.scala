@@ -15,11 +15,11 @@ class HTTPServletSession(session: HttpSession) extends HTTPSession {
 
   def maxInactiveInterval: Long = session getMaxInactiveInterval
 
-  def setMaxInactiveInterval(interval: Long) = session setMaxInactiveInterval(interval.toInt)
+  def setMaxInactiveInterval(interval: Long) = session setMaxInactiveInterval (interval.toInt)
 
   def lastAccessedTime: Long = session getLastAccessedTime
 
-  def setAttribute(name: String, value: Any) = session setAttribute(name, value)
+  def setAttribute(name: String, value: Any) = session setAttribute (name, value)
 
   def attribute(name: String): Any = session getAttribute name
 
@@ -35,12 +35,12 @@ class HTTPServletSession(session: HttpSession) extends HTTPSession {
 case class SessionToServletBridge(uniqueId: String) extends HttpSessionBindingListener with HttpSessionActivationListener {
   def sessionDidActivate(se: HttpSessionEvent) = {
     SessionMaster.getSession(uniqueId, Empty).foreach(ls =>
-      LiftSession.onSessionActivate.foreach(_(ls)))
+            LiftSession.onSessionActivate.foreach(_(ls)))
   }
 
   def sessionWillPassivate(se: HttpSessionEvent) = {
     SessionMaster.getSession(uniqueId, Empty).foreach(ls =>
-      LiftSession.onSessionPassivate.foreach(_(ls)))
+            LiftSession.onSessionPassivate.foreach(_(ls)))
   }
 
   def valueBound(event: HttpSessionBindingEvent) {

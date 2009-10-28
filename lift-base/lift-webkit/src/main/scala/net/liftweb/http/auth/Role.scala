@@ -28,7 +28,7 @@ object AuthRole {
 
   def apply(roleName: String, roles: Role*): Role = new Role {
     def name = roleName
-  }.addRoles(roles:_*)
+  }.addRoles(roles: _*)
 }
 
 /**
@@ -37,7 +37,6 @@ object AuthRole {
  * will have access to requested resource.
  */
 trait Role {
-
   private var parent: Box[Role] = Empty
   private var childs: List[Role] = Nil
 
@@ -77,13 +76,13 @@ trait Role {
    */
   def getRoleByName(roleName: String): Box[Role] =
     (this.name == roleName) match {
-    case false => childs.find(role => role.getRoleByName(roleName) match {
+      case false => childs.find(role => role.getRoleByName(roleName) match {
         case Empty => false
-        case theRole @ _ => return theRole
+        case theRole@_ => return theRole
       })
       Empty
-    case _ => Full(this)
-  }
+      case _ => Full(this)
+    }
 
   /**
    * Removes the child Role
@@ -107,15 +106,15 @@ trait Role {
   /**
    * Verifies if this Role is a child of a role having the name <i>roleName</i>
    */
-  def isChildOf(roleName: String) : Boolean = (this.name == roleName) match {
+  def isChildOf(roleName: String): Boolean = (this.name == roleName) match {
     case true => return true
-    case _ => this.parent.map(_ isChildOf(roleName)) openOr false
+    case _ => this.parent.map(_ isChildOf (roleName)) openOr false
   }
 
   /**
    * Verifies if this Role is the parent of the given Role
    */
-  def isParentOf(roleName: String) : Boolean = !this.getRoleByName(roleName).isEmpty
+  def isParentOf(roleName: String): Boolean = !this.getRoleByName(roleName).isEmpty
 
   override def toString = {
     var str = "Role(" + name;

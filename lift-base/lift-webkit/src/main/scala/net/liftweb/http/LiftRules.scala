@@ -14,7 +14,9 @@
  * and limitations under the License.
  */
 
-package net.liftweb.http;
+package net.liftweb.http
+
+;
 
 import _root_.net.liftweb.common._
 import _root_.net.liftweb.util._
@@ -46,7 +48,7 @@ object LiftRules extends Factory {
   type ViewDispatchPF = PartialFunction[List[String], Either[() => Box[NodeSeq], LiftView]]
   type HttpAuthProtectedResourcePF = PartialFunction[ParsePath, Box[Role]]
   type ExceptionHandlerPF = PartialFunction[(Props.RunModes.Value, Req, Throwable), LiftResponse]
-  type ResourceBundleFactoryPF = PartialFunction[(String,Locale), ResourceBundle]
+  type ResourceBundleFactoryPF = PartialFunction[(String, Locale), ResourceBundle]
 
   /**
    * A partial function that allows the application to define requests that should be
@@ -80,14 +82,14 @@ object LiftRules extends Factory {
   /**
    * The HTTP authentication mechanism that ift will perform. See <i>LiftRules.protectedResource</i>
    */
-  var authentication : HttpAuthentication = NoAuthentication
+  var authentication: HttpAuthentication = NoAuthentication
 
   /**
    * A function that takes the HTTPSession and the contextPath as parameters
    * and returns a LiftSession reference. This can be used in cases subclassing
    * LiftSession is necessary.
    */
-  var sessionCreator: (HTTPSession,  String) => LiftSession = {
+  var sessionCreator: (HTTPSession, String) => LiftSession = {
     case (httpSession, contextPath) => new LiftSession(contextPath, httpSession.sessionId, Full(httpSession))
   }
 
@@ -102,9 +104,9 @@ object LiftRules extends Factory {
     val wp = req.path.wholePath
     val cometSessionId =
     if (wp.length >= 3 && wp.head == LiftRules.cometPath)
-    Full(wp(2))
+      Full(wp(2))
     else
-    Empty
+      Empty
 
     val ret = SessionMaster.getSession(req.request, cometSessionId) match {
       case Full(ret) =>
@@ -172,9 +174,9 @@ object LiftRules extends Factory {
   lazy val liftVersion: String = {
     val cn = """\.""".r.replaceAllIn(LiftRules.getClass.getName, "/")
     val ret: Box[String] =
-    for {
-      url <- Box !! LiftRules.getClass.getResource("/"+cn+".class")
-      val newUrl = new _root_.java.net.URL(url.toExternalForm.split("!")(0)+"!"+"/META-INF/MANIFEST.MF")
+    for{
+      url <- Box !! LiftRules.getClass.getResource("/" + cn + ".class")
+      val newUrl = new _root_.java.net.URL(url.toExternalForm.split("!")(0) + "!" + "/META-INF/MANIFEST.MF")
       str <- tryo(new String(readWholeStream(newUrl.openConnection.getInputStream), "UTF-8"))
       ma <- """lift_version: (.*)""".r.findFirstMatchIn(str)
     } yield ma.group(1)
@@ -185,9 +187,9 @@ object LiftRules extends Factory {
   lazy val liftBuildDate: Date = {
     val cn = """\.""".r.replaceAllIn(LiftRules.getClass.getName, "/")
     val ret: Box[Date] =
-    for {
-      url <- Box !! LiftRules.getClass.getResource("/"+cn+".class")
-      val newUrl = new _root_.java.net.URL(url.toExternalForm.split("!")(0)+"!"+"/META-INF/MANIFEST.MF")
+    for{
+      url <- Box !! LiftRules.getClass.getResource("/" + cn + ".class")
+      val newUrl = new _root_.java.net.URL(url.toExternalForm.split("!")(0) + "!" + "/META-INF/MANIFEST.MF")
       str <- tryo(new String(readWholeStream(newUrl.openConnection.getInputStream), "UTF-8"))
       ma <- """Bnd-LastModified: (.*)""".r.findFirstMatchIn(str)
       asLong <- asLong(ma.group(1))
@@ -260,7 +262,7 @@ object LiftRules extends Factory {
 
   /**
    * If you don't want lift to send the application/xhtml+xml mime type to those browsers
-   * that understand it, then set this to {@code false}
+   * that understand it, then set this to  { @code false }
    */
   var useXhtmlMimeType: Boolean = true
 
@@ -285,13 +287,13 @@ object LiftRules extends Factory {
 
     val func: (() => List[NodeSeq], String, MetaData) => NodeSeq = (f, title, attr) => f() map (e => <li>{e}</li>) match {
       case Nil => Nil
-      case list => <div>{title}<ul>{list}</ul></div> % attr
+      case list => <div>{title}<ul>{list}</ul> </div> % attr
     }
 
     val f = S.noIdMessages _
     val xml = List((MsgsErrorMeta.get, f(S.errors), S.??("msg.error")),
-                   (MsgsWarningMeta.get, f(S.warnings), S.??("msg.warning")),
-                   (MsgsNoticeMeta.get, f(S.notices), S.??("msg.notice"))) flatMap {
+      (MsgsWarningMeta.get, f(S.warnings), S.??("msg.warning")),
+      (MsgsNoticeMeta.get, f(S.notices), S.??("msg.notice"))) flatMap {
       msg => msg._1 match {
         case Full(meta) => func(msg._2 _, meta.title openOr "", meta.cssClass.map(new UnprefixedAttribute("class", _, Null)) openOr Null)
         case _ => func(msg._2 _, msg._3, Null)
@@ -305,12 +307,12 @@ object LiftRules extends Factory {
 
     val g = S.idMessages _
     List((MsgErrorMeta.get, g(S.errors)),
-         (MsgWarningMeta.get, g(S.warnings)),
-         (MsgNoticeMeta.get, g(S.notices))).foldLeft(groupMessages)((car, cdr) => cdr match {
-        case (meta, m) => m.foldLeft(car)((left, r) =>
-            left & LiftRules.jsArtifacts.setHtml(r._1, <span>{r._2 flatMap(node => node)}</span> %
-                                                 (Box(meta.get(r._1)).map(new UnprefixedAttribute("class", _, Null)) openOr Null)))
-      })
+      (MsgWarningMeta.get, g(S.warnings)),
+      (MsgNoticeMeta.get, g(S.notices))).foldLeft(groupMessages)((car, cdr) => cdr match {
+      case (meta, m) => m.foldLeft(car)((left, r) =>
+              left & LiftRules.jsArtifacts.setHtml(r._1, <span>{r._2 flatMap (node => node)}</span> %
+                      (Box(meta.get(r._1)).map(new UnprefixedAttribute("class", _, Null)) openOr Null)))
+    })
   }
 
   /**
@@ -350,28 +352,29 @@ object LiftRules extends Factory {
    * DispatchSnippet instance
    */
   val snippetDispatch = RulesSeq[SnippetDispatchPF]
+
   private def setupSnippetDispatch() {
     import net.liftweb.builtin.snippet._
 
     snippetDispatch.append(
       Map("CSS" -> CSS, "Msgs" -> Msgs, "Msg" -> Msg,
-          "Menu" -> Menu, "css" -> CSS, "msgs" -> Msgs, "msg" -> Msg,
-          "menu" -> Menu,
-          "a" -> A, "children" -> Children,
-          "comet" -> Comet, "form" -> Form, "ignore" -> Ignore, "loc" -> Loc,
-          "surround" -> Surround,
-          "test_cond" -> TestCond,
-          "embed" -> Embed,
-          "tail" -> Tail,
-          "with-param" -> WithParam,
-          "bind-at" -> WithParam,
-          "VersionInfo" -> VersionInfo,
-          "version_info" -> VersionInfo,
-          "SkipDocType" -> SkipDocType,
-          "skip_doc_type" -> SkipDocType,
-          "xml_group" -> XmlGroup,
-          "XmlGroup" -> XmlGroup
-      ))
+        "Menu" -> Menu, "css" -> CSS, "msgs" -> Msgs, "msg" -> Msg,
+        "menu" -> Menu,
+        "a" -> A, "children" -> Children,
+        "comet" -> Comet, "form" -> Form, "ignore" -> Ignore, "loc" -> Loc,
+        "surround" -> Surround,
+        "test_cond" -> TestCond,
+        "embed" -> Embed,
+        "tail" -> Tail,
+        "with-param" -> WithParam,
+        "bind-at" -> WithParam,
+        "VersionInfo" -> VersionInfo,
+        "version_info" -> VersionInfo,
+        "SkipDocType" -> SkipDocType,
+        "skip_doc_type" -> SkipDocType,
+        "xml_group" -> XmlGroup,
+        "XmlGroup" -> XmlGroup
+        ))
   }
   setupSnippetDispatch()
 
@@ -413,7 +416,7 @@ object LiftRules extends Factory {
    */
   var calcIEMode: () => Boolean =
   () => (for (r <- S.request) yield r.isIE6 || r.isIE7 ||
-         r.isIE8) openOr true
+          r.isIE8) openOr true
 
   /**
    * The JavaScript to execute at the end of an
@@ -433,7 +436,7 @@ object LiftRules extends Factory {
   var localeCalculator: Box[HTTPRequest] => Locale = defaultLocaleCalculator _
 
   def defaultLocaleCalculator(request: Box[HTTPRequest]) =
-  request.flatMap(_.locale).openOr(Locale.getDefault())
+    request.flatMap(_.locale).openOr(Locale.getDefault())
 
   var resourceBundleFactories = RulesSeq[ResourceBundleFactoryPF]
 
@@ -446,7 +449,7 @@ object LiftRules extends Factory {
    * Execute a continuation. For Jetty the Jetty specific exception will be thrown
    * and the container will manage it.
    */
-  def doContinuation(req: HTTPRequest, timeout: Long): Nothing =  req suspend timeout
+  def doContinuation(req: HTTPRequest, timeout: Long): Nothing = req suspend timeout
 
   /**
    * Check to see if continuations are supported
@@ -486,57 +489,54 @@ object LiftRules extends Factory {
    * what should we display?
    */
   val deferredSnippetFailure: FactoryMaker[Failure => NodeSeq] =
-  new FactoryMaker(() => {failure: Failure => {
-        if (Props.devMode)
-        <div style="border: red solid 2px">
-          A lift:parallel snippet failed to render.  Message: {failure.msg}
-          {
-            failure.exception match {
-              case Full(e) =>
-                <pre>{
-                    e.getStackTrace.map(_.toString).mkString("\n")
-                  }</pre>
-              case _ => NodeSeq.Empty
-            }
-          }
-
-          <i>note: this error is displayed in the browser because
-            your application is running in "development" mode.  If you
-            set the system property run.mode=production, this error will not
-            be displayed, but there will be errors in the output logs.
-          </i>
+  new FactoryMaker(() => {
+    failure: Failure => {
+      if (Props.devMode)
+        <div style="border: red solid 2px">A lift:parallel snippet failed to render.Message:{failure.msg}{failure.exception match {
+          case Full(e) =>
+            <pre>{e.getStackTrace.map(_.toString).mkString("\n")}</pre>
+          case _ => NodeSeq.Empty
+        }}<i>note: this error is displayed in the browser because
+        your application is running in "development" mode.If you
+        set the system property run.mode=production, this error will not
+        be displayed, but there will be errors in the output logs.
+        </i>
         </div>
-        else NodeSeq.Empty
-      }}) {}
+      else NodeSeq.Empty
+    }
+  }) {}
 
   /**
    * If a deferred snippet has a failure during render,
    * what should we display?
    */
   val deferredSnippetTimeout: FactoryMaker[() => NodeSeq] =
-  new FactoryMaker(() => {() => {
-        if (Props.devMode)
-        <div style="border: red solid 2px">
-          A deferred snippet timed out during render.
+  new FactoryMaker(() => {
+    () => {
+      if (Props.devMode)
+        <div style="border: red solid 2px">A deferred snippet timed out during render.
 
-          <i>note: this error is displayed in the browser because
-            your application is running in "development" mode.  If you
-            set the system property run.mode=production, this error will not
-            be displayed, but there will be errors in the output logs.
-          </i>
+        <i>note: this error is displayed in the browser because
+        your application is running in "development" mode.If you
+        set the system property run.mode=production, this error will not
+        be displayed, but there will be errors in the output logs.
+        </i>
         </div>
-        else NodeSeq.Empty
-      }}) {}
+      else NodeSeq.Empty
+    }
+  }) {}
 
   /**
    * Should comments be stripped from the served XHTML
    */
   val stripComments: FactoryMaker[() => Boolean] =
-  new FactoryMaker(() => {() => {
-        if (Props.devMode)
+  new FactoryMaker(() => {
+    () => {
+      if (Props.devMode)
         false
-        else true
-      }}) {}
+      else true
+    }
+  }) {}
 
 
   private[http] var ending = false
@@ -553,12 +553,12 @@ object LiftRules extends Factory {
     req match {
       case null => dispatch.toList
       case _ => SessionMaster.getSession(req, Empty) match {
-          case Full(s) => S.initIfUninitted(s) {
-              S.highLevelSessionDispatchList.map(_.dispatch) :::
-              dispatch.toList
-            }
-          case _ => dispatch.toList
+        case Full(s) => S.initIfUninitted(s) {
+          S.highLevelSessionDispatchList.map(_.dispatch) :::
+                  dispatch.toList
         }
+        case _ => dispatch.toList
+      }
     }
   }
 
@@ -566,11 +566,11 @@ object LiftRules extends Factory {
     req match {
       case null => rewrite.toList
       case _ => SessionMaster.getSession(req, Empty) match {
-          case Full(s) => S.initIfUninitted(s) {
-              S.sessionRewriter.map(_.rewrite) ::: LiftRules.rewrite.toList
-            }
-          case _ => rewrite.toList
+        case Full(s) => S.initIfUninitted(s) {
+          S.sessionRewriter.map(_.rewrite) ::: LiftRules.rewrite.toList
         }
+        case _ => rewrite.toList
+      }
     }
   }
 
@@ -587,11 +587,12 @@ object LiftRules extends Factory {
   /**
    * Computes the Comet path by adding additional tokens on top of cometPath
    */
-  var calcCometPath: String => JsExp = prefix => { 
+  var calcCometPath: String => JsExp = prefix => {
     Str(prefix + "/" + cometPath + "/") +
-    JsRaw("Math.floor(Math.random() * 100000000000)") +
-    Str(S.session.map(s => S.encodeURL("/"+s.uniqueId)) openOr "")
+            JsRaw("Math.floor(Math.random() * 100000000000)") +
+            Str(S.session.map(s => S.encodeURL("/" + s.uniqueId)) openOr "")
   }
+
   /**
    * The default way of calculating the context path
    */
@@ -619,7 +620,7 @@ object LiftRules extends Factory {
   /**
    * Sets the HTTPContext
    */
-  def setContext(in: HTTPContext): Unit =  synchronized {
+  def setContext(in: HTTPContext): Unit = synchronized {
     if (in ne _context) {
       _context = in
     }
@@ -630,7 +631,7 @@ object LiftRules extends Factory {
   /**
    * Used by Lift to construct full pacakge names fromthe packages provided to addToPackages function
    */
-  def buildPackage(end: String) = synchronized (otherPackages.map(_+"."+end))
+  def buildPackage(end: String) = synchronized(otherPackages.map(_ + "." + end))
 
   /**
    * Tells Lift where to find Snippets,Views, Comet Actors and Lift ORM Model object
@@ -647,6 +648,7 @@ object LiftRules extends Factory {
   }
 
   private val defaultFinder = getClass.getResource _
+
   private def resourceFinder(name: String): _root_.java.net.URL = _context.resource(name)
 
   /**
@@ -658,33 +660,33 @@ object LiftRules extends Factory {
    * Obtain the resource URL by name
    */
   def defaultGetResource(name: String): Box[_root_.java.net.URL] =
-  for {
-    rf <- (Box !! resourceFinder(name)) or (Box !! defaultFinder(name))
-  } yield rf
+    for{
+      rf <- (Box !! resourceFinder(name)) or (Box !! defaultFinder(name))
+    } yield rf
   // resourceFinder(name) match {case null => defaultFinder(name) match {case null => Empty; case s => Full(s)} ; case s => Full(s)}
 
   /**
    * Obtain the resource InputStream by name
    */
   def getResourceAsStream(name: String): Box[InputStream] =
-  getResource(name).map(_.openStream)
+    getResource(name).map(_.openStream)
 
   /**
    * Obtain the resource as an array of bytes by name
    */
-  def loadResource(name: String): Box[Array[Byte]] = getResourceAsStream(name).map{
+  def loadResource(name: String): Box[Array[Byte]] = getResourceAsStream(name).map {
     stream =>
-    val buffer = new Array[Byte](2048)
-    val out = new ByteArrayOutputStream
-    def reader {
-      val len = stream.read(buffer)
-      if (len < 0) return
-      else if (len > 0) out.write(buffer, 0, len)
-      reader
-    }
-    reader
-    stream.close
-    out.toByteArray
+            val buffer = new Array[Byte](2048)
+            val out = new ByteArrayOutputStream
+            def reader {
+              val len = stream.read(buffer)
+              if (len < 0) return
+              else if (len > 0) out.write(buffer, 0, len)
+              reader
+            }
+            reader
+            stream.close
+            out.toByteArray
   }
 
   /**
@@ -701,7 +703,7 @@ object LiftRules extends Factory {
    * Looks up a resource by name and returns an Empty Box if the resource was not found.
    */
   def finder(name: String): Box[InputStream] =
-  (for {
+    (for{
       ctx <- Box !! LiftRules.context
       res <- Box !! ctx.resourceAsStream(name)
     } yield res) or getResourceAsStream(name)
@@ -728,10 +730,10 @@ object LiftRules extends Factory {
   val snippets = RulesSeq[SnippetPF]
 
   private val _cometLogger: FatLazy[LiftLogger] = FatLazy({
-      val ret = LogBoot.loggerByName("comet_trace")
-      ret.level = LiftLogLevels.Off
-      ret
-    })
+    val ret = LogBoot.loggerByName("comet_trace")
+    ret.level = LiftLogLevels.Off
+    ret
+  })
 
   /**
    * Holds the CometLogger that will be used to log comet activity
@@ -747,20 +749,21 @@ object LiftRules extends Factory {
    * Takes a Node, headers, cookies, and a session and turns it into an XhtmlResponse.
    */
   private def cvt(ns: Node, headers: List[(String, String)], cookies: List[HTTPCookie], session: Req) =
-  convertResponse({val ret = XhtmlResponse(ns,
-                                           ResponseInfo.docType(session),
-                                           headers, cookies, 200,
-                                           S.ieMode)
-                   ret._includeXmlVersion = !S.skipDocType
-                   ret
+    convertResponse({
+      val ret = XhtmlResponse(ns,
+        ResponseInfo.docType(session),
+        headers, cookies, 200,
+        S.ieMode)
+      ret._includeXmlVersion = !S.skipDocType
+      ret
     }, headers, cookies, session)
 
   var defaultHeaders: PartialFunction[(NodeSeq, Req), List[(String, String)]] = {
     case _ => List("Expires" -> Helpers.nowAsInternetDate,
-                   "Cache-Control" ->
-                   "no-cache; private; no-store; must-revalidate; max-stale=0; post-check=0; pre-check=0; max-age=0",
-                   "Pragma" -> "no-cache" /*,
-      "Keep-Alive" -> "timeout=3, max=993" */)
+      "Cache-Control" ->
+              "no-cache; private; no-store; must-revalidate; max-stale=0; post-check=0; pre-check=0; max-age=0",
+      "Pragma" -> "no-cache" /*,
+      "Keep-Alive" -> "timeout=3, max=993" */ )
   }
 
   /**
@@ -794,9 +797,9 @@ object LiftRules extends Factory {
     case (ns: NodeSeq, headers, cookies, session) => cvt(Group(ns), headers, cookies, session)
     case (SafeNodeSeq(n), headers, cookies, session) => cvt(Group(n), headers, cookies, session)
 
-    case (Full(o), headers, cookies, session) => convertResponse( (o, headers, cookies, session) )
+    case (Full(o), headers, cookies, session) => convertResponse((o, headers, cookies, session))
 
-    case (Some(o), headers, cookies, session) => convertResponse( (o, headers, cookies, session) )
+    case (Some(o), headers, cookies, session) => convertResponse((o, headers, cookies, session))
     case (bad, _, _, session) => session.createNotFound
   }
 
@@ -805,7 +808,7 @@ object LiftRules extends Factory {
    */
   val snippetFailedFunc = RulesSeq[SnippetFailure => Unit].prepend(logSnippetFailure _)
 
-  private def logSnippetFailure(sf: SnippetFailure) = Log.warn("Snippet Failure: "+sf)
+  private def logSnippetFailure(sf: SnippetFailure) = Log.warn("Snippet Failure: " + sf)
 
   /**
    * Set to false if you do not want Ajax/Comet requests that are not associated with a session
@@ -839,15 +842,11 @@ object LiftRules extends Factory {
    */
   var exceptionHandler = RulesSeq[ExceptionHandlerPF].append {
     case (Props.RunModes.Development, r, e) =>
-      XhtmlResponse((<html><body>Exception occured while processing {r.uri}
-              <pre>{
-                  showException(e)
-                }</pre></body></html>),ResponseInfo.docType(r), List("Content-Type" -> "text/html; charset=utf-8"), Nil, 500, S.ieMode)
+      XhtmlResponse((<html> <body>Exception occured while processing{r.uri}<pre>{showException(e)}</pre> </body> </html>), ResponseInfo.docType(r), List("Content-Type" -> "text/html; charset=utf-8"), Nil, 500, S.ieMode)
 
     case (_, r, e) =>
-      Log.error("Exception being returned to browser when processing "+r, e)
-      XhtmlResponse((<html><body>Something unexpected happened while serving the page at {r.uri}
-                           </body></html>),ResponseInfo.docType(r), List("Content-Type" -> "text/html; charset=utf-8"), Nil, 500, S.ieMode)
+      Log.error("Exception being returned to browser when processing " + r, e)
+      XhtmlResponse((<html> <body>Something unexpected happened while serving the page at{r.uri}</body> </html>), ResponseInfo.docType(r), List("Content-Type" -> "text/html; charset=utf-8"), Nil, 500, S.ieMode)
   }
 
   /**
@@ -856,8 +855,8 @@ object LiftRules extends Factory {
    *
    */
   val uriNotFound = RulesSeq[URINotFoundPF].prepend(NamedPF("default") {
-      case (r, _) => Req.defaultCreateNotFound(r)
-    })
+    case (r, _) => Req.defaultCreateNotFound(r)
+  })
 
   /**
    * If you use the form attribute in a snippet invocation, what attributes should
@@ -880,12 +879,12 @@ object LiftRules extends Factory {
    * @return the stack trace
    */
   private def showException(le: Throwable): String = {
-    val ret = "Message: "+le.toString+"\n\t"+
-    le.getStackTrace.map(_.toString).mkString("\n\t") + "\n"
+    val ret = "Message: " + le.toString + "\n\t" +
+            le.getStackTrace.map(_.toString).mkString("\n\t") + "\n"
 
     val also = le.getCause match {
       case null => ""
-      case sub: Throwable => "\nCaught and thrown by:\n"+ showException(sub)
+      case sub: Throwable => "\nCaught and thrown by:\n" + showException(sub)
     }
 
     ret + also
@@ -906,6 +905,7 @@ object LiftRules extends Factory {
       def isDefinedAt(r: Req): Boolean = {
         r.path.partPath == path
       }
+
       def apply(r: Req): Boolean = {
         r.path.partPath == path
       }
@@ -913,22 +913,24 @@ object LiftRules extends Factory {
 
     val cssFixer: LiftRules.DispatchPF = new LiftRules.DispatchPF {
       def functionName = "default css fixer"
+
       def isDefinedAt(r: Req): Boolean = {
         r.path.partPath == path
       }
+
       def apply(r: Req): () => Box[LiftResponse] = {
         val cssPath = path.mkString("/", "/", ".css")
         val css = LiftRules.loadResourceAsString(cssPath);
 
         () => {
           css.map(str => CSSHelpers.fixCSS(new BufferedReader(
-                new StringReader(str)), prefix openOr (S.contextPath)) match {
-              case (Full(c), _) => CSSResponse(c)
-              case (_, input) => {
-                  Log.warn("Fixing " + cssPath + " failed");
-                  CSSResponse(input)
-                }
-            })
+            new StringReader(str)), prefix openOr (S.contextPath)) match {
+            case (Full(c), _) => CSSResponse(c)
+            case (_, input) => {
+              Log.warn("Fixing " + cssPath + " failed");
+              CSSResponse(input)
+            }
+          })
         }
       }
     }
@@ -1020,8 +1022,8 @@ object LiftRules extends Factory {
    */
   var renderCometPageContents: (LiftSession, Seq[CometVersionPair]) => JsCmd =
   (session, vp) => JsCmds.Run(
-    "var lift_toWatch = "+vp.map(p => p.guid.encJs+": "+p.version).mkString("{", " , ", "}")+";"
-  )
+    "var lift_toWatch = " + vp.map(p => p.guid.encJs + ": " + p.version).mkString("{", " , ", "}") + ";"
+    )
 
   /**
    * Hods the last update time of the Ajax request. Based on this server mayreturn HTTP 304 status
@@ -1047,7 +1049,7 @@ object LiftRules extends Factory {
    */
   var handleMimeFile: (String, String, String, InputStream) => FileParamHolder =
   (fieldName, contentType, fileName, inputStream) =>
-  new InMemFileParamHolder(fieldName, contentType, fileName, Helpers.readWholeStream(inputStream))
+          new InMemFileParamHolder(fieldName, contentType, fileName, Helpers.readWholeStream(inputStream))
 
   /**
    * Hods the last update time of the Comet request. Based on this server mayreturn HTTP 304 status
@@ -1076,10 +1078,10 @@ object LiftRules extends Factory {
     val modTime = cometScriptUpdateTime(liftSession)
 
     requestState.testFor304(modTime) or
-    Full(JavaScriptResponse(renderCometScript(liftSession),
-                            List("Last-Modified" -> toInternetDate(modTime),
-                                 "Expires" -> toInternetDate(modTime + 10.minutes)),
-                            Nil, 200))
+            Full(JavaScriptResponse(renderCometScript(liftSession),
+              List("Last-Modified" -> toInternetDate(modTime),
+                "Expires" -> toInternetDate(modTime + 10.minutes)),
+              Nil, 200))
   }
 
   /**
@@ -1090,10 +1092,10 @@ object LiftRules extends Factory {
     val modTime = ajaxScriptUpdateTime(liftSession)
 
     requestState.testFor304(modTime) or
-    Full(JavaScriptResponse(renderAjaxScript(liftSession),
-                            List("Last-Modified" -> toInternetDate(modTime),
-                                 "Expires" -> toInternetDate(modTime + 10.minutes)),
-                            Nil, 200))
+            Full(JavaScriptResponse(renderAjaxScript(liftSession),
+              List("Last-Modified" -> toInternetDate(modTime),
+                "Expires" -> toInternetDate(modTime + 10.minutes)),
+              Nil, 200))
   }
 
   var templateCache: Box[TemplateCache[(Locale, List[String]), NodeSeq]] = Empty
@@ -1115,14 +1117,14 @@ object LiftRules extends Factory {
 case object BreakOut
 
 abstract class Bootable {
-  def boot() : Unit;
+  def boot(): Unit;
 }
 
 /**
  * Factory object for RulesSeq instances
  */
 object RulesSeq {
-  def apply[T]: RulesSeq[T] = new RulesSeq[T]{}
+  def apply[T]: RulesSeq[T] = new RulesSeq[T] {}
 }
 
 /**
@@ -1132,7 +1134,7 @@ object RulesSeq {
 trait RulesSeq[T] {
   private var rules: List[T] = Nil
 
-  private def safe_?(f : => Any) {
+  private def safe_?(f: => Any) {
     LiftRules.doneBoot match {
       case false => f
       case _ => throw new IllegalStateException("Cannot modify after boot.");
@@ -1163,9 +1165,9 @@ trait FirstBox[F, T] {
     def finder(in: List[F => Box[T]]): Box[T] = in match {
       case Nil => Empty
       case x :: xs => x(param) match {
-          case Full(r) => Full(r)
-          case _ => finder(xs)
-        }
+        case Full(r) => Full(r)
+        case _ => finder(xs)
+      }
     }
 
     finder(toList)
@@ -1173,9 +1175,9 @@ trait FirstBox[F, T] {
 }
 
 private[http] case object DefaultBootstrap extends Bootable {
-  def boot() : Unit = {
+  def boot(): Unit = {
     val f = createInvoker("boot", Class.forName("bootstrap.liftweb.Boot").newInstance.asInstanceOf[AnyRef])
-    f.map{f => f()}
+    f.map {f => f()}
   }
 }
 
@@ -1184,6 +1186,7 @@ private[http] case object DefaultBootstrap extends Bootable {
  */
 trait CometVersionPair {
   def guid: String
+
   def version: Long
 }
 
@@ -1207,16 +1210,17 @@ abstract class GenericValidtor extends XHtmlValidator {
   import java.io.ByteArrayInputStream
 
   private lazy val sf = SchemaFactory.newInstance(W3C_XML_SCHEMA_NS_URI)
+
   protected def ngurl: String
 
   private lazy val schema = tryo(sf.newSchema(new URL(ngurl)))
 
   def apply(in: Node): List[XHTMLValidationError] = {
-    (for {
-        sc <- schema
-        v <- tryo(sc.newValidator)
-        source = new StreamSource(new ByteArrayInputStream(in.toString.getBytes("UTF-8")))
-      } yield try {
+    (for{
+      sc <- schema
+      v <- tryo(sc.newValidator)
+      source = new StreamSource(new ByteArrayInputStream(in.toString.getBytes("UTF-8")))
+    } yield try {
         v.validate(source)
         Nil
       } catch {
@@ -1225,7 +1229,7 @@ abstract class GenericValidtor extends XHtmlValidator {
       }) match {
       case Full(x) => x
       case Failure(msg, _, _) =>
-        Log.info("XHTML Validation Failure: "+msg)
+        Log.info("XHTML Validation Failure: " + msg)
         Nil
       case _ => Nil
     }

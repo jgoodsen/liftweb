@@ -10,7 +10,6 @@ import _root_.net.liftweb.util._
 import Helpers._
 
 class HTTPRequestServlet(val req: HttpServletRequest) extends HTTPRequest {
-
   private val ctx = new HTTPServletContext(req.getSession.getServletContext)
 
   private val (hasContinuations_?, contSupport, getContinuation, getObject, setObject, suspend, resume) = {
@@ -31,19 +30,19 @@ class HTTPRequestServlet(val req: HttpServletRequest) extends HTTPRequest {
 
   def cookies: List[HTTPCookie] =
     (Box !! req.getCookies).map(_.toList.map(c => HTTPCookie(c.getName,
-                                              Box !! (c.getValue),
-                                              Box !! (c.getDomain),
-                                              Box !! (c.getPath),
-                                              Box !! (c.getMaxAge),
-                                              Box !! (c.getVersion),
-                                              Box !! (c.getSecure)))) openOr Nil
+      Box !! (c.getValue),
+      Box !! (c.getDomain),
+      Box !! (c.getPath),
+      Box !! (c.getMaxAge),
+      Box !! (c.getVersion),
+      Box !! (c.getSecure)))) openOr Nil
 
   def authType: Box[String] = Box !! req.getAuthType
 
   def headers(name: String): List[String] = enumToList[String](req.getHeaders(name).asInstanceOf[_root_.java.util.Enumeration[String]])
 
   lazy val headers: List[HTTPParam] = enumToList[String](req.getHeaderNames.asInstanceOf[_root_.java.util.Enumeration[String]]).
-    map(n => HTTPParam(n, headers(n)))
+          map(n => HTTPParam(n, headers(n)))
 
   def contextPath: String = req.getContextPath
 
@@ -62,9 +61,9 @@ class HTTPRequestServlet(val req: HttpServletRequest) extends HTTPRequest {
   def param(name: String): List[String] = req.getParameterValues(name) match {case null => Nil case x => x.toList}
 
   def params: List[HTTPParam] = enumToList[String](req.getParameterNames.asInstanceOf[_root_.java.util.Enumeration[String]]).
-    map(n => HTTPParam(n, param(n)))
+          map(n => HTTPParam(n, param(n)))
 
-  def paramNames: List[String] = params map(_.name)
+  def paramNames: List[String] = params map (_.name)
 
   def remoteAddress: String = req.getRemoteAddr
 
@@ -87,21 +86,21 @@ class HTTPRequestServlet(val req: HttpServletRequest) extends HTTPRequest {
   def multipartContent_? = ServletFileUpload.isMultipartContent(req)
 
   /**
-  * @return the sessionID (if there is one) for this request.  This will *NOT* create
-  * a new session if one does not already exist
-  */
+   * @return the sessionID (if there is one) for this request.  This will *NOT* create
+   * a new session if one does not already exist
+   */
   def sessionId: Box[String] =
-  for {
-    httpSession <- Box !! req.getSession(false)
-    id <- Box !! httpSession.getId
-  } yield id
+    for{
+      httpSession <- Box !! req.getSession(false)
+      id <- Box !! httpSession.getId
+    } yield id
 
   def extractFiles: List[ParamHolder] = (new Iterator[ParamHolder] {
     val mimeUpload = (new ServletFileUpload)
-    mimeUpload.setProgressListener(new ProgressListener{
-       lazy val progList: (Long, Long, Int) => Unit = S.session.flatMap(_.progressListener) openOr LiftRules.progressListener
+    mimeUpload.setProgressListener(new ProgressListener {
+      lazy val progList: (Long, Long, Int) => Unit = S.session.flatMap(_.progressListener) openOr LiftRules.progressListener
 
-       def update(a: Long, b: Long, c: Int) {progList(a,b,c)}
+      def update(a: Long, b: Long, c: Int) {progList(a, b, c)}
     })
 
     mimeUpload.setSizeMax(LiftRules.maxMimeSize)
@@ -109,10 +108,12 @@ class HTTPRequestServlet(val req: HttpServletRequest) extends HTTPRequest {
     val what = mimeUpload.getItemIterator(req)
 
     def hasNext = what.hasNext
+
     def next = what.next match {
       case f if (f.isFormField) => NormalParamHolder(f.getFieldName, new String(readWholeStream(f.openStream), "UTF-8"))
       case f => LiftRules.handleMimeFile(f.getFieldName, f.getContentType, f.getName, f.openStream)
-    }}).toList
+    }
+  }).toList
 
   def hasSuspendResumeSupport_? =
     if (!hasContinuations_?) None

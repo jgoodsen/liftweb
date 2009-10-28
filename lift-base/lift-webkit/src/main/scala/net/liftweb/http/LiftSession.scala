@@ -24,7 +24,7 @@ import _root_.net.liftweb.http.js.{JsCmd, AjaxInfo}
 import _root_.net.liftweb.util.Helpers._
 import _root_.net.liftweb.builtin.snippet._
 import _root_.java.lang.reflect.{Method, Modifier, InvocationTargetException}
-import _root_.scala.xml.{Node, NodeSeq, Elem, MetaData, Null, UnprefixedAttribute, PrefixedAttribute, XML, Comment, Group}
+import _root_.scala.xml._
 import _root_.java.io.InputStream
 import _root_.java.util.concurrent.TimeUnit
 import _root_.java.util.Locale
@@ -41,7 +41,7 @@ object LiftSession {
    * Returns a reference to a LiftSession dictated by LiftRules#sessionCreator function.
    */
   def apply(session: HTTPSession, contextPath: String) =
-  LiftRules.sessionCreator(session, contextPath)
+    LiftRules.sessionCreator(session, contextPath)
 
   /**
    * Holds user's functions that will be called when the session is activated
@@ -89,7 +89,6 @@ case class SessionWatcherInfo(sessions: Map[String, LiftSession])
  * timing sessions out.
  */
 object SessionMaster extends LiftActor {
-
   private var sessions: Map[String, LiftSession] = Map.empty
   private object CheckAndPurge
 
@@ -108,17 +107,17 @@ object SessionMaster extends LiftActor {
    * Returns a LiftSession or Empty if not found
    */
   def getSession(httpSession: => HTTPSession, otherId: Box[String]): Box[LiftSession] =
-  synchronized {
-    otherId.flatMap(sessions.get) or Box(sessions.get(httpSession.sessionId))
-  }
+    synchronized {
+      otherId.flatMap(sessions.get) or Box(sessions.get(httpSession.sessionId))
+    }
 
   /**
    * Returns a LiftSession or Empty if not found
    */
   def getSession(req: HTTPRequest, otherId: Box[String]): Box[LiftSession] =
-  synchronized {
-    otherId.flatMap(sessions.get) or Box(sessions.get(req.session.sessionId))
-  }
+    synchronized {
+      otherId.flatMap(sessions.get) or Box(sessions.get(req.session.sessionId))
+    }
 
   /**
    * Adds a new session to SessionMaster
@@ -136,29 +135,30 @@ object SessionMaster extends LiftActor {
   private val reaction: PartialFunction[Any, Unit] = {
     case RemoveSession(sessionId) =>
       val ses = synchronized(sessions)
-      ses.get(sessionId).foreach{s =>
-        try {
-          s.doShutDown
-          try {
-            s.httpSession.foreach(_.unlink(s))
-          } catch {
-            case e => // ignore... sometimes you can't do this and it's okay
-          }
-        } catch {
-          case e => Log.error("Failure in remove session", e)
+      ses.get(sessionId).foreach {
+        s =>
+                try {
+                  s.doShutDown
+                  try {
+                    s.httpSession.foreach(_.unlink(s))
+                  } catch {
+                    case e => // ignore... sometimes you can't do this and it's okay
+                  }
+                } catch {
+                  case e => Log.error("Failure in remove session", e)
 
-        } finally {
-          synchronized{ sessions = sessions - sessionId }
-        }
+                } finally {
+                  synchronized {sessions = sessions - sessionId}
+                }
       }
 
     case CheckAndPurge =>
       val now = millis
-      val ses = synchronized{sessions}
+      val ses = synchronized {sessions}
       for ((id, session) <- ses.elements) {
         session.doCometActorCleanup()
         if (now - session.lastServiceTime > session.inactivityLength || session.markedForTermination) {
-          Log.info(" Session "+id+" expired")
+          Log.info(" Session " + id + " expired")
           this.sendMsg(RemoveSession(id))
         } else {
           session.cleanupUnseenFuncs()
@@ -171,21 +171,20 @@ object SessionMaster extends LiftActor {
   }
 
 
-
   private[http] def sendMsg(in: Any): Unit =
-  if (!Props.inGAE) this ! in
-  else {
-    this.synchronized{
-      tryo {
-        if (reaction.isDefinedAt(in)) reaction.apply(in)
+    if (!Props.inGAE) this ! in
+    else {
+      this.synchronized {
+        tryo {
+          if (reaction.isDefinedAt(in)) reaction.apply(in)
+        }
       }
     }
-  }
 
   private def doPing() {
     if (!Props.inGAE) {
       try {
-        ActorPing schedule(this, CheckAndPurge, 10 seconds)
+        ActorPing schedule (this, CheckAndPurge, 10 seconds)
       } catch {
         case e => Log.error("Couldn't start SessionMaster ping", e)
       }
@@ -202,6 +201,7 @@ object PageName extends RequestVar[String]("")
 object RenderVersion {
   private object ver extends RequestVar(Helpers.nextFuncName)
   def get: String = ver.is
+
   def set(value: String) {
     ver(value)
   }
@@ -247,8 +247,8 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
   @volatile
   private[http] var inactivityLength: Long = 30 minutes
 
-  private [http] var highLevelSessionDispatcher = new HashMap[String, LiftRules.DispatchPF]()
-  private [http] var sessionRewriter = new HashMap[String, LiftRules.RewritePF]()
+  private[http] var highLevelSessionDispatcher = new HashMap[String, LiftRules.DispatchPF]()
+  private[http] var sessionRewriter = new HashMap[String, LiftRules.RewritePF]()
 
 
   private object snippetMap extends RequestVar[Map[String, AnyRef]](Map())
@@ -292,6 +292,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
       markedForTermination = true;
     }
   }
+
   /**
    * Executes the user's functions based on the query parameters
    */
@@ -300,12 +301,12 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
     val toRun = {
       // get all the commands, sorted by owner,
       (state.uploadedFiles.map(_.name) ::: state.paramNames).
-      flatMap{n => synchronized{messageCallback.get(n)}.map(mcb => RunnerHolder(n, mcb, mcb.owner))}.
-      sort{
-        case ( RunnerHolder(_, _, Full(a)), RunnerHolder(_, _, Full(b))) if a < b => true
+              flatMap {n => synchronized {messageCallback.get(n)}.map(mcb => RunnerHolder(n, mcb, mcb.owner))}.
+              sort {
+        case (RunnerHolder(_, _, Full(a)), RunnerHolder(_, _, Full(b))) if a < b => true
         case (RunnerHolder(_, _, Full(a)), RunnerHolder(_, _, Full(b))) if a > b => false
         case (RunnerHolder(an, _, Full(a)), RunnerHolder(bn, _, Full(b))) if a == b => an < bn
-        case (RunnerHolder(_,_, Full(_)), _) => false
+        case (RunnerHolder(_, _, Full(_)), _) => false
         case (_, RunnerHolder(_, _, Full(_))) => true
         case (RunnerHolder(a, _, _), RunnerHolder(b, _, _)) => a < b
       }
@@ -316,22 +317,23 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
         () => state.uploadedFiles.filter(_.name == i.name).map(v => bfh(v))
       case normal =>
         () => normal(state.params.getOrElse(i.name,
-                                            state.uploadedFiles.filter(_.name == i.name).map(_.fileName)))
+          state.uploadedFiles.filter(_.name == i.name).map(_.fileName)))
     }
 
-    val ret = toRun.map(_.owner).removeDuplicates.flatMap{w =>
-      val f = toRun.filter(_.owner == w)
-      w match {
-        // if it's going to a CometActor, batch up the commands
-        case Full(id) if asyncById.contains(id) =>
-          asyncById.get(id).toList.
-          flatMap(a => a.!?(5000L, ActionMessageSet(f.map(i => buildFunc(i)), state)) match {
-              case Full(li: List[_]) => li
-              case li: List[_] => li
-              case other => Nil
-            })
-        case _ => f.map(i => buildFunc(i).apply())
-      }
+    val ret = toRun.map(_.owner).removeDuplicates.flatMap {
+      w =>
+              val f = toRun.filter(_.owner == w)
+              w match {
+              // if it's going to a CometActor, batch up the commands
+                case Full(id) if asyncById.contains(id) =>
+                  asyncById.get(id).toList.
+                          flatMap(a => a.!?(5000L, ActionMessageSet(f.map(i => buildFunc(i)), state)) match {
+                    case Full(li: List[_]) => li
+                    case li: List[_] => li
+                    case other => Nil
+                  })
+                case _ => f.map(i => buildFunc(i).apply())
+              }
     }
 
     ret
@@ -341,7 +343,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
    * Updates the internal functions mapping
    */
   def updateFunctionMap(funcs: Map[String, S.AFuncHolder], uniqueId: String, when: Long): Unit = synchronized {
-    funcs.foreach{case (name, func) => messageCallback(name) = func.duplicate(uniqueId)}
+    funcs.foreach {case (name, func) => messageCallback(name) = func.duplicate(uniqueId)}
   }
 
   /**
@@ -366,7 +368,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
     sessionRewriter = HashMap.empty
   }
 
-  private [http] def fixSessionTime(): Unit = synchronized {
+  private[http] def fixSessionTime(): Unit = synchronized {
     for (httpSession <- this.httpSession) {
       lastServiceTime = millis // DO NOT REMOVE THIS LINE!!!!!
       val diff = lastServiceTime - httpSession.lastAccessedTime
@@ -400,28 +402,29 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
   private[http] def cleanupUnseenFuncs(): Unit = synchronized {
     if (LiftRules.enableLiftGC) {
       val now = millis
-      messageCallback.keys.toList.foreach{k =>
-        val f = messageCallback(k)
-        if (!f.sessionLife && f.owner.isDefined && (now - f.lastSeen) > LiftRules.unusedFunctionsLifeTime) {
-          messageCallback -= k
-        }
+      messageCallback.keys.toList.foreach {
+        k =>
+                val f = messageCallback(k)
+                if (!f.sessionLife && f.owner.isDefined && (now - f.lastSeen) > LiftRules.unusedFunctionsLifeTime) {
+                  messageCallback -= k
+                }
       }
     }
   }
 
   /**
-   * Updates the timestamp of the functions owned by this owner and return the 
+   * Updates the timestamp of the functions owned by this owner and return the
    * number of updated functions
    */
   private[http] def updateFuncByOwner(ownerName: String, time: Long): Int = synchronized {
     (0 /: messageCallback)((l, v) => l + (v._2.owner match {
-          case Full(owner) if (owner == ownerName) =>
-            v._2.lastSeen = time
-            1
-          case Empty => v._2.lastSeen = time
-            1
-          case _ => 0
-        }))
+      case Full(owner) if (owner == ownerName) =>
+        v._2.lastSeen = time
+        1
+      case Empty => v._2.lastSeen = time
+      1
+      case _ => 0
+    }))
   }
 
   /**
@@ -442,7 +445,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
 
         SessionMaster.sendMsg(RemoveSession(this.uniqueId))
 
-        asyncComponents.foreach{case (_, comp) => done ::= (() => tryo(comp ! ShutDown))}
+        asyncComponents.foreach {case (_, comp) => done ::= (() => tryo(comp ! ShutDown))}
         cleanUpSession()
         LiftSession.onShutdownSession.foreach(f => done ::= (() => f(this)))
       }
@@ -455,9 +458,8 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
    * Find the template assocaited with the Loc
    */
   private[http] def locTemplate: Box[NodeSeq] =
-  for (req <- S.request;
-       loc <- req.location;
-       template <- loc.template) yield template
+    for (loc <- S.location;
+         template <- loc.template) yield template
 
   def contextPath = (LiftRules.calcContextPath(this) or S.curRequestContextPath) openOr _contextPath
 
@@ -490,44 +492,44 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
 
           // Process but make sure we're okay, sitemap wise
           val response: Box[LiftResponse] = early or (request.testLocation match {
-              case Left(true) =>
-                cleanUpBeforeRender
+            case Left(true) =>
+              cleanUpBeforeRender
 
-                PageName(request.uri+" -> "+request.path)
-                LiftRules.allowParallelSnippets.doWith(() => !Props.inGAE) {
-                  (request.location.flatMap(_.earlyResponse) or
-                   LiftRules.earlyResponse.firstFull(request)) or {
-                    ((locTemplate or findVisibleTemplate(request.path, request)).
-                     // Phase 1: snippets & templates processing
-                     map(xml => processSurroundAndInclude(PageName get, xml)) match {
-                        case Full(rawXml: NodeSeq) => {
+              PageName(request.uri + " -> " + request.path)
+              LiftRules.allowParallelSnippets.doWith(() => !Props.inGAE) {
+                (request.location.flatMap(_.earlyResponse) or
+                        LiftRules.earlyResponse.firstFull(request)) or {
+                  ((locTemplate or findVisibleTemplate(request.path, request)).
+                          // Phase 1: snippets & templates processing
+                          map(xml => processSurroundAndInclude(PageName get, xml)) match {
+                    case Full(rawXml: NodeSeq) => {
 
-                            // Make sure that functions have the right owner. It is important for this to
-                            // happen before the merge phase so that in merge to have a correct view of
-                            // mapped functions and their owners.
-                            updateFunctionMap(S.functionMap, RenderVersion get, millis)
+                      // Make sure that functions have the right owner. It is important for this to
+                      // happen before the merge phase so that in merge to have a correct view of
+                      // mapped functions and their owners.
+                      updateFunctionMap(S.functionMap, RenderVersion get, millis)
 
-                            // Phase 2: Head & Tail merge, add additional elements to body & head
-                            val xml = merge(rawXml, request)
+                      // Phase 2: Head & Tail merge, add additional elements to body & head
+                      val xml = merge(rawXml, request)
 
-                            notices = Nil
-                            // Phase 3: Response conversion including fixHtml
-                            Full(LiftRules.convertResponse(xml,
-                                                           S.getHeaders(LiftRules.defaultHeaders((xml, request))),
-                                                           S.responseCookies,
-                                                           request))
-                          }
-                        case _ => if (LiftRules.passNotFoundToChain) Empty else Full(request.createNotFound)
-                      })
-                  }
+                      notices = Nil
+                      // Phase 3: Response conversion including fixHtml
+                      Full(LiftRules.convertResponse(xml,
+                        S.getHeaders(LiftRules.defaultHeaders((xml, request))),
+                        S.responseCookies,
+                        request))
+                    }
+                    case _ => if (LiftRules.passNotFoundToChain) Empty else Full(request.createNotFound)
+                  })
                 }
+              }
 
-              case Right(Full(resp)) => Full(resp)
-              case _ if (LiftRules.passNotFoundToChain) => Empty
-              case _ if Props.mode == Props.RunModes.Development =>
-                Full(ForbiddenResponse("The requested page was not defined in your SiteMap, so access was blocked.  (This message is displayed in development mode only)"))
-              case _ => Full(request.createNotFound)
-            })
+            case Right(Full(resp)) => Full(resp)
+            case _ if (LiftRules.passNotFoundToChain) => Empty
+            case _ if Props.mode == Props.RunModes.Development =>
+              Full(ForbiddenResponse("The requested page was not defined in your SiteMap, so access was blocked.  (This message is displayed in development mode only)"))
+            case _ => Full(request.createNotFound)
+          })
 
           // Before returning the response check for redirect and set the appropriate state.
           response.map(checkRedirect)
@@ -565,7 +567,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
    * @param name -- the name of the variable
    * @param value -- the value of the variable
    */
-  private [liftweb] def set[T](name: String, value: T): Unit = sessionVarSync.synchronized {
+  private[liftweb] def set[T](name: String, value: T): Unit = sessionVarSync.synchronized {
     myVariables = myVariables + (name -> value)
   }
 
@@ -574,9 +576,9 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
    *
    * @param name -- the name of the session-local variable to get
    *
-   * @return Full(value) if found, Empty otherwise
+   * @return Full ( value ) if found, Empty otherwise
    */
-  private [liftweb] def get[T](name: String): Box[T] = sessionVarSync.synchronized {
+  private[liftweb] def get[T](name: String): Box[T] = sessionVarSync.synchronized {
     Box(myVariables.get(name)).asInstanceOf[Box[T]]
   }
 
@@ -585,37 +587,38 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
    *
    * @param name the variable to unset
    */
-  private [liftweb] def unset(name: String): Unit = sessionVarSync.synchronized {
+  private[liftweb] def unset(name: String): Unit = sessionVarSync.synchronized {
     myVariables -= name
   }
 
 
-  private[http] def attachRedirectFunc(uri: String, f : Box[() => Unit]) = {
-    f map { fnc =>
-      val func: String = LiftSession.this.synchronized {
-        val funcName = Helpers.nextFuncName
-        messageCallback(funcName) = S.NFuncHolder(() => {
-            try {
-              fnc()
-            } finally {
-              LiftSession.this.synchronized {
-                messageCallback -= funcName
+  private[http] def attachRedirectFunc(uri: String, f: Box[() => Unit]) = {
+    f map {
+      fnc =>
+              val func: String = LiftSession.this.synchronized {
+                val funcName = Helpers.nextFuncName
+                messageCallback(funcName) = S.NFuncHolder(() => {
+                  try {
+                    fnc()
+                  } finally {
+                    LiftSession.this.synchronized {
+                      messageCallback -= funcName
+                    }
+                  }
+                })
+                funcName
               }
-            }
-          })
-        funcName
-      }
-      val sep = uri contains("?") match {case true => "&" case _ => "?"}
-      uri + sep + func +"=_"
+              val sep = uri contains ("?") match {case true => "&" case _ => "?"}
+              uri + sep + func + "=_"
     } openOr uri
 
   }
 
   private[http] def checkRedirect(resp: LiftResponse): LiftResponse = resp match {
-    case RedirectWithState(uri, state, cookies @ _*) =>
+    case RedirectWithState(uri, state, cookies@_*) =>
       state.msgs.foreach(m => S.message(m._1, m._2))
       notices = S.getNotices
-      RedirectResponse(attachRedirectFunc(uri, state.func), cookies:_*)
+      RedirectResponse(attachRedirectFunc(uri, state.func), cookies: _*)
     case _ => resp
   }
 
@@ -624,7 +627,7 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
     val lb = new ListBuffer[Elem]
 
     def appendAll(in: NodeSeq, lb: ListBuffer[Elem]) {
-      in.foreach{
+      in.foreach {
         case Group(ns) => appendAll(ns, lb)
         case e: Elem if f(e) => lb += e; appendAll(e.child, lb)
         case e: Elem => appendAll(e.child, lb)
@@ -639,14 +642,14 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
   private def findVisibleTemplate(path: ParsePath, session: Req): Box[NodeSeq] = {
     val tpath = path.partPath
     val splits = tpath.toList.filter {a => !a.startsWith("_") && !a.startsWith(".") && a.toLowerCase.indexOf("-hidden") == -1} match {
-      case s @ _ if (!s.isEmpty) => s
+      case s@_ if (!s.isEmpty) => s
       case _ => List("index")
     }
     findAnyTemplate(splits, S.locale)
   }
 
   private[liftweb] def findTemplate(name: String): Box[NodeSeq] = {
-    val splits = (if (name.startsWith("/")) name else "/"+name).split("/").toList.drop(1) match {
+    val splits = (if (name.startsWith("/")) name else "/" + name).split("/").toList.drop(1) match {
       case Nil => List("index")
       case s => s
     }
@@ -664,20 +667,20 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
   }
 
   private def instantiateOrRedirect[T](c: Class[T]): Box[T] = tryo({
-      case e: ResponseShortcutException => throw e
-      case ite: _root_.java.lang.reflect.InvocationTargetException
-        if (ite.getCause.isInstanceOf[ResponseShortcutException]) => throw ite.getCause.asInstanceOf[ResponseShortcutException]
-    }, c.newInstance)
+    case e: ResponseShortcutException => throw e
+    case ite: _root_.java.lang.reflect.InvocationTargetException
+      if (ite.getCause.isInstanceOf[ResponseShortcutException]) => throw ite.getCause.asInstanceOf[ResponseShortcutException]
+  }, c.newInstance)
 
   private def findAttributeSnippet(name: String, rest: MetaData): MetaData = {
     S.doSnippet(name) {
       val (cls, method) = splitColonPair(name, null, "render")
 
       findSnippetClass(cls).flatMap(clz => instantiateOrRedirect(clz).flatMap(inst =>
-          (invokeMethod(clz, inst, method) match {
-              case Full(md: MetaData) => Full(md.copy(rest))
-              case _ => Empty
-            }))).openOr(rest)
+              (invokeMethod(clz, inst, method) match {
+                case Full(md: MetaData) => Full(md.copy(rest))
+                case _ => Empty
+              }))).openOr(rest)
     }
   }
 
@@ -686,39 +689,39 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
    */
   def findAndProcessTemplate(name: List[String]): Box[Elem] = {
     def findElem(in: NodeSeq): Box[Elem] =
-    in.toList.flatMap {
-      case e: Elem => Some(e)
-      case _ => None
-    } firstOption
+      in.toList.flatMap {
+        case e: Elem => Some(e)
+        case _ => None
+      } firstOption
 
-    for {
-      template <- findAnyTemplate(name, S.locale) ?~ ("Template "+name+" not found")
+    for{
+      template <- findAnyTemplate(name, S.locale) ?~ ("Template " + name + " not found")
       res <- findElem(processSurroundAndInclude(name.mkString("/", "/", ""), template))
     } yield res
   }
 
-  private def processAttributes(in: MetaData) : MetaData = {
+  private def processAttributes(in: MetaData): MetaData = {
     in match {
       case Null => Null
       case mine: PrefixedAttribute if (mine.pre == "lift") => {
-          mine.key match {
-            case "snippet" => findAttributeSnippet(mine.value.text, processAttributes(in.next))
-            case _ => mine.copy(processAttributes(in.next))
-          }
+        mine.key match {
+          case "snippet" => findAttributeSnippet(mine.value.text, processAttributes(in.next))
+          case _ => mine.copy(processAttributes(in.next))
         }
+      }
       case notMine => notMine.copy(processAttributes(in.next))
     }
   }
 
   private def findSnippetInstance(cls: String): Box[AnyRef] =
-  S.snippetForClass(cls) or
-  (findSnippetClass(cls).flatMap(c => instantiateOrRedirect(c)) match {
-      case Full(inst: StatefulSnippet) =>
-        inst.snippetName = cls; S.setSnippetForClass(cls, inst); Full(inst)
-      case Full(ret) => Full(ret)
-      case fail : Failure => fail
-      case _ => Empty
-    })
+    S.snippetForClass(cls) or
+            (findSnippetClass(cls).flatMap(c => instantiateOrRedirect(c)) match {
+              case Full(inst: StatefulSnippet) =>
+                inst.snippetName = cls; S.setSnippetForClass(cls, inst); Full(inst)
+              case Full(ret) => Full(ret)
+              case fail: Failure => fail
+              case _ => Empty
+            })
 
 
   private def reportSnippetError(page: String,
@@ -726,50 +729,59 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
                                  why: LiftRules.SnippetFailures.Value,
                                  addlMsg: NodeSeq,
                                  whole: NodeSeq): NodeSeq =
-  {
-    for {
-      f <- LiftRules.snippetFailedFunc.toList
-    }
-    f(LiftRules.SnippetFailure(page, snippetName, why))
+    {
+      for{
+        f <- LiftRules.snippetFailedFunc.toList
+      }
+        f(LiftRules.SnippetFailure(page, snippetName, why))
 
-    Props.mode match {
-      case Props.RunModes.Development =>
-        <div style="display: block; margin: 8px; border: 2px solid red">
-          Error processing snippet {snippetName openOr "N/A"}.  Reason: {why} {addlMsg}
-          XML causing this error:
-          <br/>
-          <pre>
-            {whole.toString}
-          </pre>
+      Props.mode match {
+        case Props.RunModes.Development =>
+          <div style="display: block; margin: 8px; border: 2px solid red">Error processing snippet{snippetName openOr "N/A"}.Reason:{why}{addlMsg}XML causing this error:<br/>
+          <pre>{whole.toString}</pre>
           <i>note: this error is displayed in the browser because
-            your application is running in "development" mode.  If you
-            set the system property run.mode=production, this error will not
-            be displayed, but there will be errors in the output logs.
+          your application is running in "development" mode.If you
+          set the system property run.mode=production, this error will not
+          be displayed, but there will be errors in the output logs.
           </i>
-        </div>
-      case _ => NodeSeq.Empty
+          </div>
+        case _ => NodeSeq.Empty
+      }
     }
-  }
 
   private final def findNSAttr(attrs: MetaData, prefix: String, key: String): Option[Seq[Node]] =
-  attrs match {
-    case Null => Empty
-    case p: PrefixedAttribute if p.pre == prefix && p.key == key => Some(p.value)
-    case x => findNSAttr(x.next, prefix, key)
-  }
-
-  def snipFuncBuilder(f: S.AFuncHolder): S.AFuncHolder = {
-    val currentMap = snippetMap.is
-    new S.ProxyFuncHolder(f) {
-      override def apply(in: List[String]): Any = snippetMap.doWith(snippetMap.is ++ currentMap) {
-        super.apply(in)
-      }
-
-      override def apply(in: FileParamHolder): Any = snippetMap.doWith(snippetMap.is ++ currentMap) {
-        super.apply(in)
-      }
+    attrs match {
+      case Null => Empty
+      case p: PrefixedAttribute if p.pre == prefix && p.key == key => Some(p.value)
+      case x => findNSAttr(x.next, prefix, key)
     }
-   
+
+  /**
+   * Wrap an AFuncHolder with the current snippet and Loc context so that for Ajax calls, the original snippets,
+   * RequestVars and Loc (location) are populated
+   *
+   * @param f the AFuncHolder that you want to wrap with execution context
+   */
+  private[http] def contextFuncBuilder(f: S.AFuncHolder): S.AFuncHolder = {
+    val currentMap = snippetMap.is
+    val curLoc = S.location
+    val requestVarFunc: Function1[Function0[Any], Any] = RequestVarHandler.generateSnapshotRestorer()
+    new S.ProxyFuncHolder(f) {
+      override def apply(in: List[String]): Any =
+      requestVarFunc(() =>
+        S.CurrentLocation.doWith(curLoc) {
+          snippetMap.doWith(snippetMap.is ++ currentMap) {
+            super.apply(in)
+          }
+        })
+
+      override def apply(in: FileParamHolder): Any =
+        requestVarFunc(() => S.CurrentLocation.doWith(curLoc) {
+          snippetMap.doWith(snippetMap.is ++ currentMap) {
+            super.apply(in)
+          }
+        })
+    }
   }
 
   private def processSnippet(page: String, snippetName: Box[String],
@@ -779,87 +791,87 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
     val isForm = !attrs.get("form").toList.isEmpty
 
     val eagerEval: Boolean = (attrs.get("eager_eval").map(toBoolean) or
-                              findNSAttr(attrs, "lift", "eager_eval").map(toBoolean)
-    ) getOrElse false
+            findNSAttr(attrs, "lift", "eager_eval").map(toBoolean)
+            ) getOrElse false
 
     val kids = if (eagerEval) processSurroundAndInclude(page, passedKids) else passedKids
 
     def locSnippet(snippet: String): Box[NodeSeq] =
-    for (req <- S.request;
-         loc <- req.location;
-         func <- loc.snippet(snippet)) yield func(kids)
+      for (loc <- S.location;
+           func <- loc.snippet(snippet)) yield func(kids)
 
-    def locateAndCacheSnippet(cls: String): Box[AnyRef] =
-    snippetMap.is.get(cls) or {
-      val ret = LiftRules.snippet(cls) or findSnippetInstance(cls)
-      ret.foreach(s => snippetMap.is(cls) = s)
-      ret
+    def locateAndCacheSnippet(cls: String): Box[AnyRef] = {
+      snippetMap.is.get(cls) or {
+        val ret = LiftRules.snippet(cls) or findSnippetInstance(cls)
+        ret.foreach(s => snippetMap.set(snippetMap.is.update(cls, s)))
+        ret
+      }
     }
 
     val ret: NodeSeq = snippetName.map(snippet =>
-      S.doSnippet(snippet)(
-        (S.locateMappedSnippet(snippet).map(_(kids)) or
-         locSnippet(snippet)).openOr(
-          S.locateSnippet(snippet).map(_(kids)) openOr {
-            val (cls, method) = splitColonPair(snippet, null, "render")
-            (locateAndCacheSnippet(cls)) match {
+            S.doSnippet(snippet)(
+              (S.locateMappedSnippet(snippet).map(_(kids)) or
+                      locSnippet(snippet)).openOr(
+                S.locateSnippet(snippet).map(_(kids)) openOr {
+                  val (cls, method) = splitColonPair(snippet, null, "render")
+                  (locateAndCacheSnippet(cls)) match {
 
-              case Full(inst: StatefulSnippet) =>
-                if (inst.dispatch.isDefinedAt(method)) {
-                  val res = inst.dispatch(method)(kids)
+                    case Full(inst: StatefulSnippet) =>
+                      if (inst.dispatch.isDefinedAt(method)) {
+                        val res = inst.dispatch(method)(kids)
 
-                  (if (isForm && !res.isEmpty) <div>{SHtml.hidden(() => inst.registerThisSnippet)}</div> else NodeSeq.Empty) ++
-                  res
-                } else reportSnippetError(page, snippetName,
-                                          LiftRules.SnippetFailures.StatefulDispatchNotMatched,
-                                          NodeSeq.Empty,
-                                          wholeTag)
+                        (if (isForm && !res.isEmpty) <div>{SHtml.hidden(() => inst.registerThisSnippet)}</div> else NodeSeq.Empty) ++
+                                res
+                      } else reportSnippetError(page, snippetName,
+                        LiftRules.SnippetFailures.StatefulDispatchNotMatched,
+                        NodeSeq.Empty,
+                        wholeTag)
 
-              case Full(inst: DispatchSnippet) =>
-                if (inst.dispatch.isDefinedAt(method)) inst.dispatch(method)(kids)
-                else reportSnippetError(page, snippetName,
-                                        LiftRules.SnippetFailures.StatefulDispatchNotMatched,
-                                        NodeSeq.Empty,
-                                        wholeTag)
+                    case Full(inst: DispatchSnippet) =>
+                      if (inst.dispatch.isDefinedAt(method)) inst.dispatch(method)(kids)
+                      else reportSnippetError(page, snippetName,
+                        LiftRules.SnippetFailures.StatefulDispatchNotMatched,
+                        NodeSeq.Empty,
+                        wholeTag)
 
-              case Full(inst) => {
-                  val ar: Array[AnyRef] = List(Group(kids)).toArray
-                  ((Helpers.invokeMethod(inst.getClass, inst, method, ar)) or
-                   Helpers.invokeMethod(inst.getClass, inst, method)) match {
-                    case CheckNodeSeq(md) => md
-                    case it =>
-                      val intersection = if (Props.devMode) {
-                        val methodNames = inst.getClass.getMethods().map(_.getName).toList.removeDuplicates
-                        val methodAlts = List(method, Helpers.camelCase(method),
-                                              Helpers.camelCaseMethod(method))
-                        methodNames intersect methodAlts
-                      }  else Nil
+                    case Full(inst) => {
+                      val ar: Array[AnyRef] = List(Group(kids)).toArray
+                      ((Helpers.invokeMethod(inst.getClass, inst, method, ar)) or
+                              Helpers.invokeMethod(inst.getClass, inst, method)) match {
+                        case CheckNodeSeq(md) => md
+                        case it =>
+                          val intersection = if (Props.devMode) {
+                            val methodNames = inst.getClass.getMethods().map(_.getName).toList.removeDuplicates
+                            val methodAlts = List(method, Helpers.camelCase(method),
+                              Helpers.camelCaseMethod(method))
+                            methodNames intersect methodAlts
+                          } else Nil
 
-                      reportSnippetError(page, snippetName,
-                                         LiftRules.SnippetFailures.MethodNotFound,
-                                         if (intersection.isEmpty) NodeSeq.Empty else
-                                         <div>There are possible matching methods ({intersection}),
-                          but none has the required signature: <pre>def {method}(in: NodeSeq): NodeSeq</pre></div>,
-                                         wholeTag)
+                          reportSnippetError(page, snippetName,
+                            LiftRules.SnippetFailures.MethodNotFound,
+                            if (intersection.isEmpty) NodeSeq.Empty else
+                              <div>There are possible matching methods ({intersection}),
+                              but none has the required signature:<pre>def{method}(in: NodeSeq): NodeSeq</pre> </div>,
+                            wholeTag)
+                      }
+                    }
+                    case Failure(_, Full(exception), _) => Log.warn("Snippet instantiation error", exception)
+                    reportSnippetError(page, snippetName,
+                      LiftRules.SnippetFailures.InstantiationException,
+                      NodeSeq.Empty,
+                      wholeTag)
+
+                    case _ => reportSnippetError(page, snippetName,
+                      LiftRules.SnippetFailures.ClassNotFound,
+                      NodeSeq.Empty,
+                      wholeTag)
+
                   }
-                }
-              case Failure(_, Full(exception), _) => Log.warn("Snippet instantiation error", exception)
-                reportSnippetError(page, snippetName,
-                                   LiftRules.SnippetFailures.InstantiationException,
-                                   NodeSeq.Empty,
-                                   wholeTag)
-
-              case _ => reportSnippetError(page, snippetName,
-                                           LiftRules.SnippetFailures.ClassNotFound,
-                                           NodeSeq.Empty,
-                                           wholeTag)
-
-            }
-          }))).openOr{
+                }))).openOr {
       reportSnippetError(page, snippetName,
-                         LiftRules.SnippetFailures.NoNameSpecified,
-                         NodeSeq.Empty,
-                         wholeTag)
+        LiftRules.SnippetFailures.NoNameSpecified,
+        NodeSeq.Empty,
+        wholeTag)
     }
 
     def checkMultiPart(in: MetaData): MetaData = in.filter(_.key == "multipart").toList match {
@@ -868,17 +880,17 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
     }
 
     def checkAttr(attr_name: String, in: MetaData, base: MetaData): MetaData =
-    in.filter(_.key == attr_name).toList match {
-      case Nil => base
-      case x => new UnprefixedAttribute(attr_name, Text(x.first.value.text),
-                                        base)
-    }
+      in.filter(_.key == attr_name).toList match {
+        case Nil => base
+        case x => new UnprefixedAttribute(attr_name, Text(x.first.value.text),
+          base)
+      }
 
     if (ret.isEmpty) ret else
-    attrs.get("form").map(ft => (
-        (<form action={S.uri} method={ft.text.trim.toLowerCase}>{ret}</form> %
-         checkMultiPart(attrs)) % LiftRules.formAttrs.vend.foldLeft[MetaData](Null)((base, name) => checkAttr(name, attrs, base))
-      )) getOrElse ret
+      attrs.get("form").map(ft => (
+              (<form action={S.uri} method={ft.text.trim.toLowerCase}>{ret}</form> %
+                      checkMultiPart(attrs)) % LiftRules.formAttrs.vend.foldLeft[MetaData](Null)((base, name) => checkAttr(name, attrs, base))
+              )) getOrElse ret
 
   }
 
@@ -900,20 +912,20 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
    * The basic partial function that does lift tag processing
    */
   private def _defaultLiftTagProcessing: LiftRules.LiftTagPF =
-  NamedPF("Default Lift Tags") {
-    case ("snippet", elm, metaData, kids, page) =>
-      metaData.get("type") match {
-        case Some(tn) =>
-          S.doSnippet(tn.text){
-            NamedPF((tn.text, elm, metaData, kids, page),
-                    liftTagProcessing)
-          }
+    NamedPF("Default Lift Tags") {
+      case ("snippet", elm, metaData, kids, page) =>
+        metaData.get("type") match {
+          case Some(tn) =>
+            S.doSnippet(tn.text) {
+              NamedPF((tn.text, elm, metaData, kids, page),
+                liftTagProcessing)
+            }
 
-        case _ => processSnippet(page, Empty , elm.attributes, elm, elm.child)
-      }
-    case (snippetInfo, elm, metaData, kids, page) =>
-      processSnippet(page, Full(snippetInfo), metaData, elm, kids)
-  }
+          case _ => processSnippet(page, Empty, elm.attributes, elm, elm.child)
+        }
+      case (snippetInfo, elm, metaData, kids, page) =>
+        processSnippet(page, Full(snippetInfo), metaData, elm, kids)
+    }
 
   liftTagProcessing = LiftRules.liftTagProcessing.toList ::: List(_defaultLiftTagProcessing)
 
@@ -932,9 +944,10 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
   // actor and send the message off to that actor
   private def processOrDefer(node: Elem)(f: => NodeSeq): NodeSeq = {
     val isLazy = LiftRules.allowParallelSnippets() &&
-    node.attributes.find{
-      case p: PrefixedAttribute => p.pre == "lift" && (p.key == "parallel")
-      case _ => false}.isDefined
+            node.attributes.find {
+              case p: PrefixedAttribute => p.pre == "lift" && (p.key == "parallel")
+              case _ => false
+            }.isDefined
 
     if (isLazy) {
       // name the node
@@ -962,36 +975,36 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
       // send the ProcessSnippet message to the Actor
       actor ! ProcessSnippet(() => {
 
-          // do the actual processing
-          def doProcessing() {
-            // process the message
-            val bns = tryo{reqVarCallback(() => f)}
+        // do the actual processing
+        def doProcessing() {
+          // process the message
+          val bns = tryo {reqVarCallback(() => f)}
 
-            // set the node
-            hash.synchronized{
-              hash(nodeId) = bns match {
-                case Empty => Failure("Weird Empty Node", Empty, Empty)
-                case x => x
-              }
-
-              // and notify listeners
-              hash.notify()
+          // set the node
+          hash.synchronized {
+            hash(nodeId) = bns match {
+              case Empty => Failure("Weird Empty Node", Empty, Empty)
+              case x => x
             }
-          }
 
-          // init the stack frame and process the message
-          req match {
-            case Full(req) =>
-              S.init(req, this) {
-                doProcessing()
-              }
-              
-            case _ =>
-              S.initIfUninitted(this) {
-                doProcessing()
-              }
+            // and notify listeners
+            hash.notify()
           }
-        })
+        }
+
+        // init the stack frame and process the message
+        req match {
+          case Full(req) =>
+            S.init(req, this) {
+              doProcessing()
+            }
+
+          case _ =>
+            S.initIfUninitted(this) {
+              doProcessing()
+            }
+        }
+      })
 
       theNode
     }
@@ -1002,28 +1015,31 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
    * Processes the surround tag and other lift tags
    */
   def processSurroundAndInclude(page: String, in: NodeSeq): NodeSeq =
-  in.flatMap{
-    v =>
-    v match {
-      case Group(nodes) =>
-        Group(processSurroundAndInclude(page, nodes))
+    in.flatMap {
+      v =>
+              v match {
+                case Group(nodes) =>
+                  Group(processSurroundAndInclude(page, nodes))
 
-      case elm: Elem if elm.prefix == "lift" || elm.prefix == "l"=>
-        processOrDefer(elm) {
-          S.doSnippet(elm.label){
-            S.withAttrs(elm.attributes) {
-              S.setVars(elm.attributes){
-                processSurroundAndInclude(page, NamedPF((elm.label, elm, elm.attributes,
-                                                         asNodeSeq(elm.child), page),
-                                                        liftTagProcessing))
-              }}}}
+                case elm: Elem if elm.prefix == "lift" || elm.prefix == "l" =>
+                  processOrDefer(elm) {
+                    S.doSnippet(elm.label) {
+                      S.withAttrs(elm.attributes) {
+                        S.setVars(elm.attributes) {
+                          processSurroundAndInclude(page, NamedPF((elm.label, elm, elm.attributes,
+                                  asNodeSeq(elm.child), page),
+                            liftTagProcessing))
+                        }
+                      }
+                    }
+                  }
 
-      case elm: Elem =>
-        Elem(v.prefix, v.label, processAttributes(v.attributes),
-             v.scope, processSurroundAndInclude(page, v.child) : _*)
-      case _ => v
+                case elm: Elem =>
+                  Elem(v.prefix, v.label, processAttributes(v.attributes),
+                    v.scope, processSurroundAndInclude(page, v.child): _*)
+                case _ => v
+              }
     }
-  }
 
   /**
    * A nicely named proxy for processSurroundAndInclude.  This method processes
@@ -1033,13 +1049,13 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
    * @param template -- the template to process using Lift's templating engine
    */
   def runTemplate(pageName: String, template: NodeSeq): NodeSeq =
-  processSurroundAndInclude(pageName, template)
+    processSurroundAndInclude(pageName, template)
 
   /**
    * Finds all Comet actors by type
    */
   def findComet(theType: String): List[LiftCometActor] = synchronized {
-    asyncComponents.elements.filter{case ((Full(name), _), _) => name == theType case _ => false}.toList.map{case (_, value) => value}
+    asyncComponents.elements.filter {case ((Full(name), _), _) => name == theType case _ => false}.toList.map {case (_, value) => value}
   }
 
   /**
@@ -1049,29 +1065,29 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
     cometSetup((Full(theType) -> name, msg) :: cometSetup.is)
   }
 
-  private[liftweb] def findComet(theType: Box[String], name: Box[String], 
+  private[liftweb] def findComet(theType: Box[String], name: Box[String],
                                  defaultXml: NodeSeq,
                                  attributes: Map[String, String]): Box[LiftCometActor] = {
     val what = (theType -> name)
     val ret = synchronized {
 
-      val ret = Box(asyncComponents.get(what)).or( {
-          theType.flatMap{
-            tpe =>
-            val ret = findCometByType(tpe, name, defaultXml, attributes)
-            ret.foreach(r =>
-              synchronized {
-                asyncComponents(what) = r
-                asyncById(r.uniqueId) = r
-              })
-            ret
-          }
-        })
+      val ret = Box(asyncComponents.get(what)).or({
+        theType.flatMap {
+          tpe =>
+                  val ret = findCometByType(tpe, name, defaultXml, attributes)
+                  ret.foreach(r =>
+                          synchronized {
+                            asyncComponents(what) = r
+                            asyncById(r.uniqueId) = r
+                          })
+                  ret
+        }
+      })
 
       ret
     }
 
-    for {
+    for{
       actor <- ret
       (cst, csv) <- cometSetup.is if cst == what
     } actor ! csv
@@ -1095,59 +1111,55 @@ class LiftSession(val _contextPath: String, val uniqueId: String,
   /**
    * Remove a Comet actor
    */
-  private [http] def removeCometActor(act: LiftCometActor): Unit = synchronized {
+  private[http] def removeCometActor(act: LiftCometActor): Unit = synchronized {
     asyncById -= act.uniqueId
     messageCallback -= act.jsonCall.funcId
     asyncComponents -= (act.theType -> act.name)
     val id = Full(act.uniqueId)
-    messageCallback.keys.toList.foreach{
+    messageCallback.keys.toList.foreach {
       k =>
-      val f = messageCallback(k)
-      if (f.owner == id) {
-        messageCallback -= k
-      }
+              val f = messageCallback(k)
+              if (f.owner == id) {
+                messageCallback -= k
+              }
     }
   }
 
   private def findCometByType(contType: String, name: Box[String], defaultXml: NodeSeq, attributes: Map[String, String]): Box[LiftCometActor] = {
-    findType[LiftCometActor](contType, LiftRules.buildPackage("comet") ::: ("lift.app.comet" :: Nil)).flatMap{
+    findType[LiftCometActor](contType, LiftRules.buildPackage("comet") ::: ("lift.app.comet" :: Nil)).flatMap {
       cls =>
-      tryo((e: Throwable) => e match {case e: _root_.java.lang.NoSuchMethodException => ()
-          case e => Log.info("Comet find by type Failed to instantiate "+cls.getName, e)}) {
-        val constr = cls.getConstructor()
-        val ret = constr.newInstance().asInstanceOf[LiftCometActor]
-        ret.callInitCometActor(this, Full(contType), name, defaultXml, attributes)
+              tryo((e: Throwable) => e match {
+                case e: _root_.java.lang.NoSuchMethodException => ()
+                case e => Log.info("Comet find by type Failed to instantiate " + cls.getName, e)
+              }) {
+                val constr = cls.getConstructor()
+                val ret = constr.newInstance().asInstanceOf[LiftCometActor]
+                ret.callInitCometActor(this, Full(contType), name, defaultXml, attributes)
 
-        // ret.link(this)
-        ret ! PerformSetupComet
-        ret.asInstanceOf[LiftCometActor]
-      }  or tryo((e: Throwable) => Log.info("Comet find by type Failed to instantiate "+cls.getName, e)) {
-        val constr = cls.getConstructor(this.getClass , classOf[Box[String]], classOf[NodeSeq], classOf[Map[String, String]])
-        val ret = constr.newInstance(this, name, defaultXml, attributes).asInstanceOf[LiftCometActor];
-        //  ret.start
-        // ret.link(this)
-        ret ! PerformSetupComet
-        ret.asInstanceOf[LiftCometActor]
-      }
+                // ret.link(this)
+                ret ! PerformSetupComet
+                ret.asInstanceOf[LiftCometActor]
+              } or tryo((e: Throwable) => Log.info("Comet find by type Failed to instantiate " + cls.getName, e)) {
+                val constr = cls.getConstructor(this.getClass, classOf[Box[String]], classOf[NodeSeq], classOf[Map[String, String]])
+                val ret = constr.newInstance(this, name, defaultXml, attributes).asInstanceOf[LiftCometActor];
+                //  ret.start
+                // ret.link(this)
+                ret ! PerformSetupComet
+                ret.asInstanceOf[LiftCometActor]
+              }
     }
   }
 
   private def failedFind(in: Failure): NodeSeq =
-  <html  xmlns:lift="http://liftweb.net" xmlns="http://www.w3.org/1999/xhtml"><head/>
-    <body><div style="border: 1px red solid">Error locating template.  Message: {in.msg} <br/>
-        {
-          in.exception.map(e => <pre>{e.toString}
-              {e.getStackTrace.map(_.toString).mkString("\n")}
-                                </pre>).openOr(NodeSeq.Empty)
-        }
-        This message is displayed because you are in Development mode.
-          </div></body></html>
+    <html xmlns:lift="http://liftweb.net" xmlns="http://www.w3.org/1999/xhtml"> <head/>
+    <body> <div style="border: 1px red solid">Error locating template.Message:{in.msg}<br/>{in.exception.map(e => <pre>{e.toString}{e.getStackTrace.map(_.toString).mkString("\n")}</pre>).openOr(NodeSeq.Empty)}This message is displayed because you are in Development mode.
+    </div> </body> </html>
 
   private[liftweb] def findAndMerge(templateName: Box[Seq[Node]], atWhat: Map[String, NodeSeq]): NodeSeq = {
-    val name = templateName.map(s => if (s.text.startsWith("/")) s.text else "/"+ s.text).openOr("/templates-hidden/default")
+    val name = templateName.map(s => if (s.text.startsWith("/")) s.text else "/" + s.text).openOr("/templates-hidden/default")
 
     findTemplate(name) match {
-      case f@ Failure(msg, be, _) if Props.devMode =>
+      case f@Failure(msg, be, _) if Props.devMode =>
         failedFind(f)
       case Full(s) => bind(atWhat, s)
       case _ => atWhat.values.flatMap(_.elements).toList
@@ -1175,7 +1187,8 @@ trait InsecureLiftView
  */
 trait LiftView {
   implicit def nsToCns(in: NodeSeq): Box[NodeSeq] = Box.legacyNullTest(in)
-  def dispatch : PartialFunction[String, () => Box[NodeSeq]]
+
+  def dispatch: PartialFunction[String, () => Box[NodeSeq]]
 }
 
 /**
@@ -1196,23 +1209,23 @@ object TemplateFinder {
   }
 
   private def checkForFunc(whole: List[String], what: ViewDispatchPF): Box[NodeSeq] =
-  if (what.isDefinedAt(whole)) what(whole) match {
-    case Left(func) => func()
-    case _ => Empty
-  }
-  else Empty
+    if (what.isDefinedAt(whole)) what(whole) match {
+      case Left(func) => func()
+      case _ => Empty
+    }
+    else Empty
 
   private def findInViews(whole: List[String], part: List[String],
                           last: String,
                           what: List[ViewDispatchPF]): Box[NodeSeq] =
-  what match {
-    case Nil => Empty
-    case x :: xs =>
-      (checkForLiftView(part, last, x) or checkForFunc(whole, x)) match {
-        case Full(ret) => Full(ret)
-        case _ => findInViews(whole, part, last, xs)
-      }
-  }
+    what match {
+      case Nil => Empty
+      case x :: xs =>
+        (checkForLiftView(part, last, x) or checkForFunc(whole, x)) match {
+          case Full(ret) => Full(ret)
+          case _ => findInViews(whole, part, last, xs)
+        }
+    }
 
   /**
    * Given a list of paths (e.g. List("foo", "index")),
@@ -1222,7 +1235,7 @@ object TemplateFinder {
    * @return the template if it can be found
    */
   def findAnyTemplate(places: List[String]): Box[NodeSeq] =
-  findAnyTemplate(places, S.locale)
+    findAnyTemplate(places, S.locale)
 
   /**
    * Given a list of paths (e.g. List("foo", "index")),
@@ -1249,118 +1262,112 @@ object TemplateFinder {
 
     if (tr.isDefined) tr
     else
-    {
-      val part = places.dropRight(1)
-      val last = places.last
+      {
+        val part = places.dropRight(1)
+        val last = places.last
 
-      findInViews(places, part, last, LiftRules.viewDispatch.toList) match {
-        case Full(lv) =>
-          Full(lv)
+        findInViews(places, part, last, LiftRules.viewDispatch.toList) match {
+          case Full(lv) =>
+            Full(lv)
 
-        case _ =>
-          val pls = places.mkString("/","/", "")
+          case _ =>
+            val pls = places.mkString("/", "/", "")
 
-          val se = suffixes.elements
-          val sl = List("_"+locale.toString, "_"+locale.getLanguage, "")
+            val se = suffixes.elements
+            val sl = List("_" + locale.toString, "_" + locale.getLanguage, "")
 
-          var found = false
-          var ret: NodeSeq = null
+            var found = false
+            var ret: NodeSeq = null
 
-          while (!found && se.hasNext) {
-            val s = se.next
-            val le = sl.elements
-            while (!found && le.hasNext) {
-              val p = le.next
-              val name = pls + p + (if (s.length > 0) "." + s else "")
-              val rb = LiftRules.finder(name)
-              if (rb.isDefined) {
-                import scala.xml.dtd.ValidationException
-                val xmlb = try {
-                  PCDataXmlParser(rb.open_!)
-                } catch {
-                  case e: ValidationException if Props.devMode =>
-                    return(Full(<div style="border: 1px red solid">Error locating template {name}.<br/>  Message: {e.getMessage} <br/>
-                          {
-                            <pre>
-                              {e.toString}
-                              {e.getStackTrace.map(_.toString).mkString("\n")}
-                            </pre>
-                          }
-                          This message is displayed because you are in Development mode.
-                                </div>))
-
-                  case e: ValidationException => Empty
-                }
-                if (xmlb.isDefined) {
-                  found = true
-                  ret = (cache(key) = xmlb.open_!)
-                } else if (xmlb.isInstanceOf[Failure] && Props.devMode) {
-                  val msg = xmlb.asInstanceOf[Failure].msg
-                  val e = xmlb.asInstanceOf[Failure].exception
-                  return(Full(<div style="border: 1px red solid">Error locating template {name}.<br/>  Message: {msg} <br/>
+            while (!found && se.hasNext) {
+              val s = se.next
+              val le = sl.elements
+              while (!found && le.hasNext) {
+                val p = le.next
+                val name = pls + p + (if (s.length > 0) "." + s else "")
+                val rb = LiftRules.finder(name)
+                if (rb.isDefined) {
+                  import scala.xml.dtd.ValidationException
+                  val xmlb = try {
+                    PCDataXmlParser(rb.open_!)
+                  } catch {
+                    case e: ValidationException if Props.devMode =>
+                      return (Full(
+                        <div style="border: 1px red solid">Error locating template {name}.<br/>
+                        Message:{e.getMessage}<br/>
                         {
-                          {e match {
-                              case Full(e) =>
-                                <pre>
-                                  {e.toString}
-                                  {e.getStackTrace.map(_.toString).mkString("\n")}
-                                </pre>
-                              case _ => NodeSeq.Empty
-                            }
-                          }
+                        <pre>{e.toString}{e.getStackTrace.map(_.toString).mkString("\n")}</pre>
                         }
                         This message is displayed because you are in Development mode.
-                              </div>))
+                      </div>))
+
+                    case e: ValidationException => Empty
+                  }
+                  if (xmlb.isDefined) {
+                    found = true
+                    ret = (cache(key) = xmlb.open_!)
+                  } else if (xmlb.isInstanceOf[Failure] && Props.devMode) {
+                    val msg = xmlb.asInstanceOf[Failure].msg
+                    val e = xmlb.asInstanceOf[Failure].exception
+                    return (Full(<div style="border: 1px red solid">Error locating template{name}.<br/>Message:{msg}<br/>{
+                    {
+                      e match {
+                        case Full(e) =>
+                          <pre>{e.toString}{e.getStackTrace.map(_.toString).mkString("\n")}</pre>
+                        case _ => NodeSeq.Empty
+                      }
+                    }}This message is displayed because you are in Development mode.
+                    </div>))
+                  }
                 }
               }
             }
-          }
 
-          if (found) Full(ret)
-          else lookForClasses(places)
+            if (found) Full(ret)
+            else lookForClasses(places)
+        }
       }
-    }
   }
 
-  private def lookForClasses(places : List[String]): Box[NodeSeq] = {
+  private def lookForClasses(places: List[String]): Box[NodeSeq] = {
     val (controller, action) = places match {
       case ctl :: act :: _ => (ctl, act)
       case ctl :: _ => (ctl, "index")
       case Nil => ("default_template", "index")
     }
     val trans = List[String => String](n => n, n => camelCase(n))
-    val toTry = trans.flatMap(f => (LiftRules.buildPackage("view") ::: ("lift.app.view" :: Nil)).map(_ + "."+f(controller)))
+    val toTry = trans.flatMap(f => (LiftRules.buildPackage("view") ::: ("lift.app.view" :: Nil)).map(_ + "." + f(controller)))
 
     first(toTry) {
       clsName =>
-      try {
-        tryo(List(classOf[ClassNotFoundException]), Empty) (Class.forName(clsName).asInstanceOf[Class[AnyRef]]).flatMap{
-          c =>
-          (c.newInstance match {
-              case inst: InsecureLiftView => c.getMethod(action).invoke(inst)
-              case inst: LiftView if inst.dispatch.isDefinedAt(action) => inst.dispatch(action)()
-              case _ => Empty
-            }) match {
-            case null | Empty | None => Empty
-            case n: Group => Full(n)
-            case n: Elem => Full(n)
-            case s: NodeSeq => Full(s)
-            case Some(n: Group) => Full(n)
-            case Some(n: Elem) => Full(n)
-            case Some(n: NodeSeq) => Full(n)
-            case Some(SafeNodeSeq(n)) => Full(n)
-            case Full(n: Group) => Full(n)
-            case Full(n: Elem) => Full(n)
-            case Full(n: NodeSeq) => Full(n)
-            case Full(SafeNodeSeq(n)) => Full(n)
-            case _ => Empty
-          }
-        }
-      } catch {
-        case ite: _root_.java.lang.reflect.InvocationTargetException if (ite.getCause.isInstanceOf[ResponseShortcutException]) => throw ite.getCause
-        case re: ResponseShortcutException => throw re
-        case _ => Empty
-      }
+              try {
+                tryo(List(classOf[ClassNotFoundException]), Empty)(Class.forName(clsName).asInstanceOf[Class[AnyRef]]).flatMap {
+                  c =>
+                          (c.newInstance match {
+                            case inst: InsecureLiftView => c.getMethod(action).invoke(inst)
+                            case inst: LiftView if inst.dispatch.isDefinedAt(action) => inst.dispatch(action)()
+                            case _ => Empty
+                          }) match {
+                            case null | Empty | None => Empty
+                            case n: Group => Full(n)
+                            case n: Elem => Full(n)
+                            case s: NodeSeq => Full(s)
+                            case Some(n: Group) => Full(n)
+                            case Some(n: Elem) => Full(n)
+                            case Some(n: NodeSeq) => Full(n)
+                            case Some(SafeNodeSeq(n)) => Full(n)
+                            case Full(n: Group) => Full(n)
+                            case Full(n: Elem) => Full(n)
+                            case Full(n: NodeSeq) => Full(n)
+                            case Full(SafeNodeSeq(n)) => Full(n)
+                            case _ => Empty
+                          }
+                }
+              } catch {
+                case ite: _root_.java.lang.reflect.InvocationTargetException if (ite.getCause.isInstanceOf[ResponseShortcutException]) => throw ite.getCause
+                case re: ResponseShortcutException => throw re
+                case _ => Empty
+              }
     }
   }
 }

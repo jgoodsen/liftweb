@@ -16,9 +16,7 @@
 package net.liftweb.http
 
 import _root_.scala.collection.mutable.{HashMap, ListBuffer}
-import _root_.scala.xml.{NodeSeq, Elem, Text, UnprefixedAttribute, Null, MetaData,
-                         PrefixedAttribute,
-                         Group, Node, HasKeyValue}
+import _root_.scala.xml._
 import _root_.scala.collection.immutable.{ListMap, TreeMap}
 import _root_.net.liftweb.common._
 import _root_.net.liftweb.util._
@@ -48,11 +46,11 @@ object S extends HasParams {
    * by the LiftRules.rewrite RulesSeq. This case class exists so that RewritePFs may
    * be manipulated by name. See S.addSessionRewriter for example usage.
    *
-   * @see #sessionRewriter
-   * @see #addSessionRewriter
-   * @see #clearSessionRewriter
-   * @see #removeSessionRewriter
-   * @see LiftRules#rewrite
+   * @see # sessionRewriter
+   * @see # addSessionRewriter
+   * @see # clearSessionRewriter
+   * @see # removeSessionRewriter
+   * @see LiftRules # rewrite
    */
   case class RewriteHolder(name: String, rewrite: LiftRules.RewritePF)
 
@@ -63,11 +61,11 @@ object S extends HasParams {
    * be manipulated by name. See S.addHighLevelSessionDispatcher for example usage.
    *
    * @see LiftResponse
-   * @see LiftRules#dispatch
-   * @see #highLevelSessionDispatchList
-   * @see #addHighLevelSessionDispatcher
-   * @see #removeHighLevelSessionDispatcher
-   * @see #clearHighLevelSessionDispatcher
+   * @see LiftRules # dispatch
+   * @see # highLevelSessionDispatchList
+   * @see # addHighLevelSessionDispatcher
+   * @see # removeHighLevelSessionDispatcher
+   * @see # clearHighLevelSessionDispatcher
    */
   case class DispatchHolder(name: String, dispatch: LiftRules.DispatchPF)
 
@@ -76,22 +74,23 @@ object S extends HasParams {
    * the session, as well as utility methods for adding and deleting cookies. It
    * is used internally.
    *
-   * @see #_responseCookies
-   * @see #_init
-   * @see #addCookie
-   * @see #deleteCookie
-   * @see #receivedCookies
-   * @see #responseCookies
-   * @see #findCookie
+   * @see # _responseCookies
+   * @see # _init
+   * @see # addCookie
+   * @see # deleteCookie
+   * @see # receivedCookies
+   * @see # responseCookies
+   * @see # findCookie
    */
   case class CookieHolder(inCookies: List[HTTPCookie], outCookies: List[HTTPCookie]) {
     def add(in: HTTPCookie) = CookieHolder(inCookies, in :: outCookies.filter(_.name != in.name))
+
     def delete(name: String) = {
       add(HTTPCookie(name, "").setMaxAge(0))
     }
-    def delete(old: HTTPCookie) = 
+
+    def delete(old: HTTPCookie) =
       add(old.setMaxAge(0).setValue(""))
-    
   }
 
   /*
@@ -107,9 +106,9 @@ object S extends HasParams {
   /**
    * Holds the current functions mappings for this session.
    *
-   * @see #functionMap
-   * @see #addFunctionMap
-   * @see #clearFunctionMap
+   * @see # functionMap
+   * @see # addFunctionMap
+   * @see # clearFunctionMap
    */
   private val _functionMap = new ThreadGlobal[HashMap[String, AFuncHolder]]
 
@@ -117,8 +116,8 @@ object S extends HasParams {
    * This is simply a flag so that we know whether or not the state for the S object
    * has been initialized for our current scope.
    *
-   * @see #inStatefulScope_?
-   * @see #initIfUninitted
+   * @see # inStatefulScope_ ?
+   * @see # initIfUninitted
    */
   private val inS = (new ThreadGlobal[Boolean]).set(false)
 
@@ -127,8 +126,8 @@ object S extends HasParams {
    * are valid only in the current request. This val
    * is typically modified using the mapSnippet method.
    *
-   * @see #mapSnippet
-   * @see #locateMappedSnippet
+   * @see # mapSnippet
+   * @see # locateMappedSnippet
    */
   private val snippetMap = new ThreadGlobal[HashMap[String, NodeSeq => NodeSeq]]
 
@@ -136,8 +135,8 @@ object S extends HasParams {
    * Holds the attributes that are set on the current snippet tag. Attributes are available
    * to snippet functions via the S.attr and S.attrs methods.
    *
-   * @see #attrs
-   * @see #attr
+   * @see # attrs
+   * @see # attr
    */
   private val _attrs = new ThreadGlobal[List[(Either[String, (String, String)], String)]]
 
@@ -145,16 +144,16 @@ object S extends HasParams {
    * Holds the per-request LiftSession instance.
    *
    * @see LiftSession
-   * @see #session
+   * @see # session
    */
   private val _sessionInfo = new ThreadGlobal[LiftSession]
 
   /**
    * Holds a list of ResourceBundles for this request.
    *
-   * @see #resourceBundles
-   * @see LiftRules#resourceNames
-   * @see LiftRules#resourceBundleFactories
+   * @see # resourceBundles
+   * @see LiftRules # resourceNames
+   * @see LiftRules # resourceBundleFactories
    */
   private val _resBundle = new ThreadGlobal[List[ResourceBundle]]
   private val _stateSnip = new ThreadGlobal[HashMap[String, StatefulSnippet]]
@@ -181,37 +180,41 @@ object S extends HasParams {
    */
   def request: Box[Req] = Box !! _request.value
 
+  private[http] object CurrentLocation extends RequestVar[Box[sitemap.Loc[_]]](request.flatMap(_.location))
+
+  def location: Box[sitemap.Loc[_]] = CurrentLocation.is
+
   /**
    * @return a List of any Cookies that have been set for this Response. If you want
    * a specific cookie, use findCookie.
    *
    * @see net.liftweb.http.provider.HTTPCookie
-   * @see #findCookie(String)
-   * @see #addCookie(Cookie)
-   * @see #deleteCookie(Cookie)
-   * @see #deleteCookie(String)
+   * @see # findCookie ( String )
+   * @see # addCookie ( Cookie )
+   * @see # deleteCookie ( Cookie )
+   * @see # deleteCookie ( String )
    */
   def receivedCookies: List[HTTPCookie] =
-  for (rc <- Box.legacyNullTest(_responseCookies.value).toList; c <- rc.inCookies)
-  yield c.clone().asInstanceOf[HTTPCookie]
+    for (rc <- Box.legacyNullTest(_responseCookies.value).toList; c <- rc.inCookies)
+    yield c.clone().asInstanceOf[HTTPCookie]
 
   /**
    * Finds a cookie with the given name that was sent in the request.
    *
    * @param name - the name of the cookie to find
    *
-   * @return Full(cookie) if the cookie exists, Empty otherwise
+   * @return Full ( cookie ) if the cookie exists, Empty otherwise
    *
    * @see net.liftweb.http.provider.HTTPCookie
-   * @see #receivedCookies
-   * @see #addCookie(Cookie)
-   * @see #deleteCookie(Cookie)
-   * @see #deleteCookie(String)
+   * @see # receivedCookies
+   * @see # addCookie ( Cookie )
+   * @see # deleteCookie ( Cookie )
+   * @see # deleteCookie ( String )
    */
   def findCookie(name: String): Box[HTTPCookie] =
-  Box.legacyNullTest(_responseCookies.value).flatMap(
-    rc => Box(rc.inCookies.filter(_.name == name)).
-    map(_.clone().asInstanceOf[HTTPCookie]))
+    Box.legacyNullTest(_responseCookies.value).flatMap(
+      rc => Box(rc.inCookies.filter(_.name == name)).
+              map(_.clone().asInstanceOf[HTTPCookie]))
 
   /**
    * @return a List of any Cookies that have been added to the response to be sent
@@ -219,10 +222,10 @@ object S extends HasParams {
    * receivedCookies.
    *
    * @see net.liftweb.http.provider.HTTPCookie
-   * @see #receivedCookies
+   * @see # receivedCookies
    */
   def responseCookies: List[HTTPCookie] = Box.legacyNullTest(_responseCookies.value).
-  toList.flatMap(_.outCookies)
+          toList.flatMap(_.outCookies)
 
   /**
    * Adds a Cookie to the List[Cookies] that will be sent with the Response.
@@ -235,35 +238,35 @@ object S extends HasParams {
    * <pre name="code" class="scala" >
    * import net.liftweb.http.provider.HTTPCookie
    *
-   * class MySnippet {
+   * class MySnippet  {
    *   final val cookieName = "Fred"
    *
-   *   def cookieDemo (xhtml : NodeSeq) : NodeSeq = {
+   *   def cookieDemo (xhtml : NodeSeq) : NodeSeq =  {
    *     var cookieVal = S.findCookie(cookieName).map(_.getvalue) openOr ""
    *
-   *     def setCookie() {
+   *     def setCookie()  {
    *       val cookie = HTTPCookie(cookieName, cookieVal).setMaxAge(3600) // 3600 seconds, or one hour
    *       S.addCookie(cookie)
-   *     }
+   * }
    *
    *     bind("cookie", xhtml,
    *          "value" -> SHtml.text(cookieVal, cookieVal = _),
    *          "add" -> SHtml.submit("Add", setCookie)
    *          "remove" -> SHtml.link(S.uri, () => S.deleteCookie(cookieName), "Delete Cookie")
    *     )
-   *   }
+   * }
    * }
    * </pre>
    *
    * @see net.liftweb.http.provider.HTTPCookie
-   * @see #deleteCookie(Cookie)
-   * @see #deleteCookie(String)
-   * @see #responseCookies
+   * @see # deleteCookie ( Cookie )
+   * @see # deleteCookie ( String )
+   * @see # responseCookies
    */
   def addCookie(cookie: HTTPCookie) {
     Box.legacyNullTest(_responseCookies.value).foreach(rc =>
-      _responseCookies.set(rc.add(cookie))
-    )
+            _responseCookies.set(rc.add(cookie))
+      )
   }
 
   /**
@@ -272,13 +275,13 @@ object S extends HasParams {
    * @param cookie the Cookie to delete
    *
    * @see net.liftweb.http.provider.HTTPCookie
-   * @see #addCookie(Cookie)
-   * @see #deleteCookie(String)
+   * @see # addCookie ( Cookie )
+   * @see # deleteCookie ( String )
    */
   def deleteCookie(cookie: HTTPCookie) {
     Box.legacyNullTest(_responseCookies.value).foreach(rc =>
-      _responseCookies.set(rc.delete(cookie))
-    )
+            _responseCookies.set(rc.delete(cookie))
+      )
   }
 
   /**
@@ -287,13 +290,13 @@ object S extends HasParams {
    * @param name the name of the cookie to delete
    *
    * @see net.liftweb.http.provider.HTTPCookie
-   * @see #addCookie(Cookie)
-   * @see #deleteCookie(Cookie)
+   * @see # addCookie ( Cookie )
+   * @see # deleteCookie ( Cookie )
    */
   def deleteCookie(name: String) {
     Box.legacyNullTest(_responseCookies.value).foreach(rc =>
-      _responseCookies.set(rc.delete(name))
-    )
+            _responseCookies.set(rc.delete(name))
+      )
   }
 
 
@@ -302,17 +305,17 @@ object S extends HasParams {
    */
   // TODO: Is this used anywhere? - DCB
   def templateFromTemplateAttr: Box[NodeSeq] =
-  for (templateName <- attr("template") ?~ "Template Attribute missing";
-       val tmplList = templateName.roboSplit("/");
-       template <- TemplateFinder.findAnyTemplate(tmplList) ?~
-       "couldn't find template") yield template
+    for (templateName <- attr("template") ?~ "Template Attribute missing";
+         val tmplList = templateName.roboSplit("/");
+         template <- TemplateFinder.findAnyTemplate(tmplList) ?~
+                 "couldn't find template") yield template
 
 
   /**
    * Returns the Locale for this request based on the LiftRules.localeCalculator
    * method.
    *
-   * @see LiftRules.localeCalculator(HTTPRequest)
+   * @see LiftRules.localeCalculator ( HTTPRequest )
    * @see java.util.Locale
    */
   def locale: Locale = LiftRules.localeCalculator(containerRequest)
@@ -321,11 +324,11 @@ object S extends HasParams {
    * Return the current timezone based on the LiftRules.timeZoneCalculator
    * method.
    *
-   * @see LiftRules.timeZoneCalculator(HTTPRequest)
+   * @see LiftRules.timeZoneCalculator ( HTTPRequest )
    * @see java.util.TimeZone
    */
   def timeZone: TimeZone =
-  LiftRules.timeZoneCalculator(containerRequest)
+    LiftRules.timeZoneCalculator(containerRequest)
 
   /**
    * @return <code>true</code> if this response should be rendered in
@@ -346,9 +349,9 @@ object S extends HasParams {
    * used.
    *
    * @see LiftRules.DispatchPF
-   * @see #addHighLevelSessionDispatcher(String,LiftRules.DispatchPF)
-   * @see #removeHighLevelSessionDispatcher(String)
-   * @see #clearHighLevelSessionDispatcher
+   * @see # addHighLevelSessionDispatcher ( String, LiftRules.DispatchPF )
+   * @see # removeHighLevelSessionDispatcher ( String )
+   * @see # clearHighLevelSessionDispatcher
    */
   def highLevelSessionDispatcher: List[LiftRules.DispatchPF] = highLevelSessionDispatchList.map(_.dispatch)
 
@@ -358,7 +361,7 @@ object S extends HasParams {
    * @see DispatchHolder
    */
   def highLevelSessionDispatchList: List[DispatchHolder] =
-  session map (_.highLevelSessionDispatcher.toList.map(t => DispatchHolder(t._1, t._2))) openOr Nil
+    session map (_.highLevelSessionDispatcher.toList.map(t => DispatchHolder(t._1, t._2))) openOr Nil
 
   /**
    * Adds a dispatch function for the current session, as opposed to a global
@@ -367,31 +370,31 @@ object S extends HasParams {
    * a dispatch function to handle the download, specific to a given user:
    *
    * <pre name="code" class="scala" >
-   * def getDocument(userId : Long)() : Box[LiftResponse] = { ... }
+   * def getDocument(userId : Long)() : Box[LiftResponse] =  { ... }
    * </pre>
    *
    * Then, in the login/logout handling snippets, we could install and remove
    * the custom dispatch as appropriate:
    *
    * <pre name="code" class="scala" >
-   *   def login(xhtml : NodeSeq) : NodeSeq = {
-   *     def doAuth () {
+   *   def login(xhtml : NodeSeq) : NodeSeq =  {
+   *     def doAuth ()  {
    *       ...
-   *       if (user.loggedIn_?) {
-   *         S.addHighLevelSessionDispatcher("docDownload", {
+   *       if (user.loggedIn_?)  {
+   *         S.addHighLevelSessionDispatcher("docDownload",  {
    *           case Req(List("download", "docs"), _, _) => getDocument(user.id)
-   *         })
-   *     }
-   *   }
+   * } )
+   * }
+   * }
    *
-   *   def logout(xhtml : NodeSeq) : NodeSeq = {
-   *     def doLogout () {
+   *   def logout(xhtml : NodeSeq) : NodeSeq =  {
+   *     def doLogout ()  {
    *       ...
    *       S.removeHighLevelSessionDispatcher("docDownload")
    *       // or, if more than one dispatch has been installed, this is simpler
    *       S.clearHighLevelSessionDispatcher
-   *     }
-   *   }
+   * }
+   * }
    * </pre>
    *
    * It's important to note that per-session dispatch takes precedence over
@@ -402,11 +405,11 @@ object S extends HasParams {
    *
    * @see LiftRules.DispatchPF
    * @see LiftRules.dispatch
-   * @see #removeHighLevelSessionDispatcher
-   * @see #clearHighLevelSessionDispatcher
+   * @see # removeHighLevelSessionDispatcher
+   * @see # clearHighLevelSessionDispatcher
    */
   def addHighLevelSessionDispatcher(name: String, disp: LiftRules.DispatchPF) =
-  session map (_.highLevelSessionDispatcher += (name -> disp))
+    session map (_.highLevelSessionDispatcher += (name -> disp))
 
   /**
    * Removes a custom dispatch function for the current session. See
@@ -416,11 +419,11 @@ object S extends HasParams {
    *
    * @see LiftRules.DispatchPF
    * @see LiftRules.dispatch
-   * @see #addHighLevelSessionDispatcher
-   * @see #clearHighLevelSessionDispatcher
+   * @see # addHighLevelSessionDispatcher
+   * @see # clearHighLevelSessionDispatcher
    */
   def removeHighLevelSessionDispatcher(name: String) =
-  session map (_.highLevelSessionDispatcher -= name)
+    session map (_.highLevelSessionDispatcher -= name)
 
   /**
    * Clears all custom dispatch functions from the current session. See
@@ -428,8 +431,8 @@ object S extends HasParams {
    *
    * @see LiftRules.DispatchPF
    * @see LiftRules.dispatch
-   * @see #addHighLevelSessionDispatcher
-   * @see #clearHighLevelSessionDispatcher
+   * @see # addHighLevelSessionDispatcher
+   * @see # clearHighLevelSessionDispatcher
    */
   def clearHighLevelSessionDispatcher = session map (_.highLevelSessionDispatcher.clear)
 
@@ -439,10 +442,10 @@ object S extends HasParams {
    * for an example of how to use per-session rewrites.
    *
    * @see RewriteHolder
-   * @see LiftRules#rewrite
+   * @see LiftRules # rewrite
    */
   def sessionRewriter: List[RewriteHolder] =
-  session map (_.sessionRewriter.toList.map(t => RewriteHolder(t._1, t._2))) openOr Nil
+    session map (_.sessionRewriter.toList.map(t => RewriteHolder(t._1, t._2))) openOr Nil
 
   /**
    * Adds a per-session rewrite function. This can be used if you only want a particular rewrite
@@ -454,29 +457,29 @@ object S extends HasParams {
    * <pre name="code" class="scala" >
    * package bootstrap.liftweb
    * ... imports ...
-   * class Boot {
-   *   def boot {
-   *     LiftRules.rewrite.append {
+   * class Boot  {
+   *   def boot  {
+   *     LiftRules.rewrite.append  {
    *       case RewriteRequest(ParsePath(List("profile")), _, _, _) =>
    *         RewriteResponse(List("index"))
-   *     }
-   *   }
+   * }
+   * }
    * }
    * </pre>
    *
    * Then, in your login snippet, you could set up a per-session rewrite to the correct template:
    *
    * <pre name="code" class="scala" >
-   * def loginSnippet (xhtml : NodeSeq) : NodeSeq = {
+   * def loginSnippet (xhtml : NodeSeq) : NodeSeq =  {
    *   ...
-   *   def doLogin () {
+   *   def doLogin ()  {
    *     ...
-   *     S.addSessionRewriter("profile", {
+   *     S.addSessionRewriter("profile",  {
    *       case RewriteRequest(ParsePath(List("profile")), _, _, _) =>
    *         RewriteResponse(List("viewProfile"), Map("user" -> user.id))
-   *     }
+   * }
    *     ...
-   *   }
+   * }
    *   ...
    * }
    * </pre>
@@ -484,11 +487,11 @@ object S extends HasParams {
    * And in your logout snippet you can remove the rewrite:
    *
    * <pre name="code" class="scala" >
-   *   def doLogout () {
+   *   def doLogout ()  {
    *     S.removeSessionRewriter("profile")
    *     // or
    *     S.clearSessionRewriter
-   *   }
+   * }
    * </pre>
    *
    *
@@ -496,12 +499,12 @@ object S extends HasParams {
    * @rw The rewrite partial function
    *
    * @see LiftRules.rewrite
-   * @see #sessionRewriter
-   * @see #removeSessionRewriter
-   * @see #clearSessionRewriter
+   * @see # sessionRewriter
+   * @see # removeSessionRewriter
+   * @see # clearSessionRewriter
    */
   def addSessionRewriter(name: String, rw: LiftRules.RewritePF) =
-  session map (_.sessionRewriter += (name -> rw))
+    session map (_.sessionRewriter += (name -> rw))
 
   private object _curRequestContextPath extends RequestVar[Box[String]](Empty)
   def curRequestContextPath: Box[String] = _curRequestContextPath.is
@@ -513,19 +516,19 @@ object S extends HasParams {
    * example of usage.
    *
    * @see LiftRules.rewrite
-   * @see #addSessionRewriter
-   * @see #clearSessionRewriter
+   * @see # addSessionRewriter
+   * @see # clearSessionRewriter
    */
   def removeSessionRewriter(name: String) =
-  session map (_.sessionRewriter -= name)
+    session map (_.sessionRewriter -= name)
 
   /**
    * Clears the per-session rewrite table. See addSessionRewriter for an
    * example of usage.
    *
    * @see LiftRules.rewrite
-   * @see #addSessionRewriter
-   * @see #removeSessionRewriter
+   * @see # addSessionRewriter
+   * @see # removeSessionRewriter
    */
   def clearSessionRewriter = session map (_.sessionRewriter.clear)
 
@@ -549,22 +552,22 @@ object S extends HasParams {
    *
    * @return A Full box containing the localized XML or Empty if there's no way to do localization
    *
-   * @see #locale
-   * @see #resourceBundles
+   * @see # locale
+   * @see # resourceBundles
    * @see LiftRules.localizeStringToXml
    * @see LiftRules.localizationLookupFailureNotice
-   * @see #loc(String,NodeSeq)
+   * @see # loc ( String, NodeSeq )
    */
   def loc(str: String): Box[NodeSeq] =
-  resourceBundles.flatMap(r => tryo(r.getObject(str) match {
-        case null => LiftRules.localizationLookupFailureNotice.foreach(_(str, locale)); Empty
-        case s: String => Full(LiftRules.localizeStringToXml(s))
-        case g: Group => Full(g)
-        case e: Elem => Full(e)
-        case n: Node => Full(n)
-        case ns: NodeSeq => Full(ns)
-        case x => Full(Text(x.toString))
-      }).flatMap(s => s)).find(e => true)
+    resourceBundles.flatMap(r => tryo(r.getObject(str) match {
+      case null => LiftRules.localizationLookupFailureNotice.foreach(_(str, locale)); Empty
+      case s: String => Full(LiftRules.localizeStringToXml(s))
+      case g: Group => Full(g)
+      case e: Elem => Full(e)
+      case n: Node => Full(n)
+      case ns: NodeSeq => Full(ns)
+      case x => Full(Text(x.toString))
+    }).flatMap(s => s)).find(e => true)
 
   /**
    * Localize the incoming string based on a resource bundle for the current locale,
@@ -575,7 +578,7 @@ object S extends HasParams {
    *
    * @return the localized XHTML or default value
    *
-   * @see #loc(String)
+   * @see # loc ( String )
    */
   def loc(str: String, dflt: NodeSeq): NodeSeq = loc(str).openOr(dflt)
 
@@ -589,13 +592,13 @@ object S extends HasParams {
   def resourceBundles: List[ResourceBundle] = {
     _resBundle.value match {
       case Nil => {
-          _resBundle.set(LiftRules.resourceNames.flatMap(name => tryo(
-                List(ResourceBundle.getBundle(name, locale))
-              ).openOr(
-                NamedPF.applyBox((name, locale), LiftRules.resourceBundleFactories.toList).map(List(_)) openOr Nil
-              )))
-          _resBundle.value
-        }
+        _resBundle.set(LiftRules.resourceNames.flatMap(name => tryo(
+          List(ResourceBundle.getBundle(name, locale))
+          ).openOr(
+          NamedPF.applyBox((name, locale), LiftRules.resourceBundleFactories.toList).map(List(_)) openOr Nil
+          )))
+        _resBundle.value
+      }
       case bundles => bundles
     }
   }
@@ -618,7 +621,7 @@ object S extends HasParams {
    *
    * @return the localized version of the string
    *
-   * @see #resourceBundles
+   * @see # resourceBundles
    */
   def ?(str: String): String = ?!(str, resourceBundles)
 
@@ -632,13 +635,13 @@ object S extends HasParams {
    * @return the localized and formatted version of the string
    *
    * @see String.format
-   * @see #resourceBundles
+   * @see # resourceBundles
    */
-  def ?(str: String, params: Any *): String =
-  if (params.length == 0)
-  ?(str)
-  else
-  String.format(locale, ?(str), params.flatMap{case s: AnyRef => List(s) case _ => Nil}.toArray :_*)
+  def ?(str: String, params: Any*): String =
+    if (params.length == 0)
+      ?(str)
+    else
+      String.format(locale, ?(str), params.flatMap {case s: AnyRef => List(s) case _ => Nil}.toArray: _*)
 
   /**
    * Get a core lift localized string or return the original string
@@ -657,12 +660,12 @@ object S extends HasParams {
    *
    * @return the localized version of the string
    */
-  def ??(str: String, params: AnyRef *): String = String.format(locale, ??(str), params: _*)
+  def ??(str: String, params: AnyRef*): String = String.format(locale, ??(str), params: _*)
 
   private def ?!(str: String, resBundle: List[ResourceBundle]): String = resBundle.flatMap(r => tryo(r.getObject(str) match {
-        case s: String => Full(s)
-        case _ => Empty
-      }).flatMap(s => s)).find(s => true) getOrElse {
+    case s: String => Full(s)
+    case _ => Empty
+  }).flatMap(s => s)).find(s => true) getOrElse {
     LiftRules.localizationLookupFailureNotice.foreach(_(str, locale));
     str
   }
@@ -672,7 +675,7 @@ object S extends HasParams {
    *
    * @return <code>true</code> if the request is a GET, <code>false</code> otherwise.
    *
-   * @see Req.get_?
+   * @see Req.get_ ?
    */
   def get_? = request.map(_.get_?).openOr(false)
 
@@ -707,7 +710,7 @@ object S extends HasParams {
    *
    * <pre name="code" class="scala" >
    *   bind(...,
-   *        "selflink" -> SHtml.link(S.uri, { () => ... }, Text("Self link")),
+   *        "selflink" -> SHtml.link(S.uri,  { () => ... }, Text("Self link")),
    *        ...)
    * </pre>
    *
@@ -724,31 +727,31 @@ object S extends HasParams {
    *
    * <pre name="code" class="scala" >
    *   ...
-   *   try {
+   *   try  {
    *     // your code here
    *     S.redirectTo(...)
-   *   } catch {
+   * } catch  {
    *     case e: Exception if !e.instanceOf[net.liftweb.http.ResponseShortcutException] => ...
-   *   }
+   * }
    * </pre>
    *
    * or
    *
    * <pre name="code" class="scala" >
    *   ...
-   *   try {
+   *   try  {
    *     // your code here
    *     S.redirectTo(...)
-   *   } catch {
+   * } catch  {
    *     case rse: net.liftweb.http.ResponseShortcutException => throw rse
    *     case e: Exception => ...
-   *   }
+   * }
    * </pre>
    *
    * @param where The new URL to redirect to.
    *
    * @see ResponseShortcutException
-   * @see #redirectTo(String, () => Unit)
+   * @see # redirectTo ( String, ( ) => Unit)
    */
   def redirectTo[T](where: String): T = throw ResponseShortcutException.redirect(where)
 
@@ -761,10 +764,10 @@ object S extends HasParams {
    * @param where The new URL to redirect to.
    * @param func The function to be executed when the redirect is accessed.
    *
-   * @see #redirectTo(String)
+   * @see # redirectTo ( String )
    */
   def redirectTo[T](where: String, func: () => Unit): T =
-  throw ResponseShortcutException.redirect(where, func)
+    throw ResponseShortcutException.redirect(where, func)
 
   private[http] object oldNotices extends
   RequestVar[Seq[(NoticeType.Value, NodeSeq, Box[String])]](Nil)
@@ -779,8 +782,8 @@ object S extends HasParams {
    * @param f
    */
   // TODO: what is f?
-  def init[B](request: Req, session: LiftSession)(f: => B) : B = {
-    _init(request,session)(() => f)
+  def init[B](request: Req, session: LiftSession)(f: => B): B = {
+    _init(request, session)(() => f)
   }
 
   /**
@@ -798,12 +801,12 @@ object S extends HasParams {
    * <pre name="code" class="scala" >
    * import net.liftweb.mapper.DB
    * import net.liftweb.http.S
-   * class Boot {
-   *   def boot {
+   * class Boot  {
+   *   def boot  {
    *     ...
    *     DB.addLogFunc(S.logQuery _)
    *     ...
-   *   }
+   * }
    * }
    * </pre>
    *
@@ -811,44 +814,44 @@ object S extends HasParams {
    * byt default. To retrieve the List of query log items, use S.queryLog. You can also
    * provide your own analysis function that will process the query log vi S.addAnalyzer.
    *
-   * @see #queryLog
-   * @see #addAnalyzer
-   * @see net.liftweb.mapper.DB.addLogFun((String,Long) => Any)
+   * @see # queryLog
+   * @see # addAnalyzer
+   * @see net.liftweb.mapper.DB.addLogFun ( ( String, Long ) => Any)
    */
   def logQuery(query: String, time: Long) = p_queryLog.is += (query, time)
 
   private[http] def snippetForClass(cls: String): Box[StatefulSnippet] =
-  Box.legacyNullTest(_stateSnip.value).flatMap(_.get(cls))
+    Box.legacyNullTest(_stateSnip.value).flatMap(_.get(cls))
 
   private[http] def setSnippetForClass(cls: String, inst: StatefulSnippet): Unit =
-  Box.legacyNullTest(_stateSnip.value).foreach(_(cls) = inst)
+    Box.legacyNullTest(_stateSnip.value).foreach(_(cls) = inst)
 
   private[http] def unsetSnippetForClass(cls: String): Unit =
-  Box.legacyNullTest(_stateSnip.value).foreach(_ -= cls)
+    Box.legacyNullTest(_stateSnip.value).foreach(_ -= cls)
 
 
   private var _queryAnalyzer: List[(Box[Req], Long,
-                                    List[(String, Long)]) => Any] = Nil
+          List[(String, Long)]) => Any] = Nil
 
   /**
    * Add a query analyzer (passed queries for analysis or logging). The analyzer
    * methods are executed with the request, total time to process the request, and
    * the List of query log entries once the current request completes.
    *
-   * @see #logQuery
-   * @see #queryLog
+   * @see # logQuery
+   * @see # queryLog
    */
   def addAnalyzer(f: (Box[Req], Long,
-                      List[(String, Long)]) => Any): Unit =
-  _queryAnalyzer = _queryAnalyzer ::: List(f)
+          List[(String, Long)]) => Any): Unit =
+    _queryAnalyzer = _queryAnalyzer ::: List(f)
 
   private var aroundRequest: List[LoanWrapper] = Nil
 
   private def doAround[B](ar: List[LoanWrapper])(f: => B): B =
-  ar match {
-    case Nil => f
-    case x :: xs => x(doAround(xs)(f))
-  }
+    ar match {
+      case Nil => f
+      case x :: xs => x(doAround(xs)(f))
+    }
 
   /**
    * You can wrap the handling of an HTTP request with your own wrapper.  The wrapper can
@@ -856,7 +859,7 @@ object S extends HasParams {
    * This allows for query analysis, etc. See S.addAround(LoanWrapper) for an example.
    * This version of the method takes a list of LoanWrappers that are applied in order.
    *
-   * @see #addAround(LoanWrapper)
+   * @see # addAround ( LoanWrapper )
    * @see LoanWrapper
    */
   def addAround(lw: List[LoanWrapper]): Unit = aroundRequest = lw ::: aroundRequest
@@ -869,30 +872,30 @@ object S extends HasParams {
    * a resource and makes it available via a RequestVar, then closes the resource when finished:
    *
    * <pre name="code" class="scala" >
-   * import net.liftweb.http.{ResourceVar,S}
+   * import net.liftweb.http.{ ResourceVar,S }
    * import net.liftweb.util.LoanWrapper
    *
    * // Where "ResourceType" is defined by you
    * object myResource extends ResourceVar[ResourceType](...)
    *
-   * class Boot {
-   *   def boot {
+   * class Boot  {
+   *   def boot  {
    *     ...
    *     S.addAround(
-   *       new LoanWrapper {
-   *         def apply[T](f: => T) : T = {
+   *       new LoanWrapper  {
+   *         def apply[T](f: => T) : T =  {
    *           myResource(... code to open and return a resource instance ...)
    *           f() // This call propagates the request further down the "chain" for template processing, etc.
    *           myResource.is.close() // Release the resource
-   *         }
-   *       }
+   * }
+   * }
    *     )
    *     ...
-   *   }
+   * }
    * }
    * </pre>
    *
-   * @see #addAround(LoanWrapper)
+   * @see # addAround ( LoanWrapper )
    * @see LoanWrapper
    */
   def addAround(lw: LoanWrapper): Unit = aroundRequest = lw :: aroundRequest
@@ -901,12 +904,12 @@ object S extends HasParams {
    * Get a list of the logged queries. These log entries are added via the logQuery method, which
    * has a more detailed explanation of usage.
    *
-   * @see #logQuery(String,Long)
-   * @see #addAnalyzer
+   * @see # logQuery ( String, Long )
+   * @see # addAnalyzer
    */
   def queryLog: List[(String, Long)] = p_queryLog.is.toList
 
-  private def wrapQuery[B](f:() => B): B = {
+  private def wrapQuery[B](f: () => B): B = {
     val begin = millis
     try {
       f()
@@ -926,13 +929,13 @@ object S extends HasParams {
    *   ...
    * </pre>
    *
-   * @see #getHeaders
+   * @see # getHeaders
    */
   def setHeader(name: String, value: String) {
     Box.legacyNullTest(_responseHeaders.value).foreach(
       rh =>
-      rh.headers = rh.headers + (name -> value)
-    )
+              rh.headers = rh.headers + (name -> value)
+      )
   }
 
   /**
@@ -940,16 +943,16 @@ object S extends HasParams {
    * a specific response header, use S.getHeader. If you want to get request headers (those
    * sent by the client), use Req.getHeaders or S.getRequestHeader.
    *
-   * @see #setHeader(String,String)
-   * @see #getHeader(String)
-   * @see #getRequestHeader(String)
+   * @see # setHeader ( String, String )
+   * @see # getHeader ( String )
+   * @see # getRequestHeader ( String )
    */
   def getHeaders(in: List[(String, String)]): List[(String, String)] = {
     Box.legacyNullTest(_responseHeaders.value).map(
       rh =>
-      rh.headers.elements.toList :::
-      in.filter{case (n, v) => !rh.headers.contains(n)}
-    ).openOr(Nil)
+              rh.headers.elements.toList :::
+                      in.filter {case (n, v) => !rh.headers.contains(n)}
+      ).openOr(Nil)
   }
 
   /**
@@ -959,14 +962,14 @@ object S extends HasParams {
    * @param name The name of the HTTP header to retrieve
    * @return A Full(value) or Empty if the header isn't set
    *
-   * @see #setHeader(String,String)
-   * @see #getHeaders(List[(String,String)])
-   * @see #getRequestHeader(String)
+   * @see # setHeader ( String, String )
+   * @see # getHeaders ( List[ ( String, String ) ] )
+   * @see # getRequestHeader ( String )
    */
-  def getHeader(name : String) : Box[String] = {
+  def getHeader(name: String): Box[String] = {
     Box.legacyNullTest(_responseHeaders.value).map(
       rh => Box(rh.headers.get(name))
-    ).openOr(Empty)
+      ).openOr(Empty)
   }
 
   /**
@@ -977,15 +980,15 @@ object S extends HasParams {
    * @param name The name of the HTTP header to retrieve
    * @return A Full(value) or Empty if the header isn't set
    *
-   * @see Req#header(String)
-   * @see #getHeader(String)
-   * @see #setHeader(String,String)
-   * @see #getHeaders(List[(String,String)])
+   * @see Req # header ( String )
+   * @see # getHeader ( String )
+   * @see # setHeader ( String, String )
+   * @see # getHeaders ( List[ ( String, String ) ] )
    */
-  def getRequestHeader(name : String) : Box[String] =
-  for (req <- request;
-       hdr <- req.header(name))
-  yield hdr
+  def getRequestHeader(name: String): Box[String] =
+    for (req <- request;
+         hdr <- req.header(name))
+    yield hdr
 
   /**
    * Sets the document type for the response. If this is not set, the DocType for Lift responses
@@ -998,8 +1001,8 @@ object S extends HasParams {
   def setDocType(what: Box[String]) {
     Box.legacyNullTest(_responseHeaders.value).foreach(
       rh =>
-      rh.docType = what
-    )
+              rh.docType = what
+      )
   }
 
   /**
@@ -1011,7 +1014,7 @@ object S extends HasParams {
    */
   def getDocType: (Boolean, Box[String]) = Box.legacyNullTest(_responseHeaders.value).map(
     rh => (rh.overrodeDocType, rh.docType)
-  ).openOr( (false, Empty) )
+    ).openOr((false, Empty))
 
 
   private object _skipDocType extends RequestVar(false)
@@ -1021,9 +1024,9 @@ object S extends HasParams {
    * content. If you're sending XHTML and this is set to true, you need to include the DocType
    * in your template.
    *
-   * @see #skipDocType_=(Boolean)
+   * @see # skipDocType_ =(Boolean)
    */
-  def skipDocType : Boolean = _skipDocType.is
+  def skipDocType: Boolean = _skipDocType.is
 
   /**
    * Sets Lift's DocType behavior. If this is set to true, Lift will not emit a DocType definition
@@ -1032,7 +1035,7 @@ object S extends HasParams {
    *
    * @param skip Set to <code>true</code> to prevent Lift from emitting a DocType in its response
    *
-   * @see #skipDocType
+   * @see # skipDocType
    */
   def skipDocType_=(skip: Boolean) {_skipDocType.set(skip)}
 
@@ -1079,22 +1082,22 @@ object S extends HasParams {
    * @return a List[Cookie] even if the underlying request's Cookies are null.
    */
   private def getCookies(request: Box[HTTPRequest]): List[HTTPCookie] =
-  for (r <- (request).toList;
-       ca <- Box.legacyNullTest(r.cookies).toList;
-       c <- ca) yield c
+    for (r <- (request).toList;
+         ca <- Box.legacyNullTest(r.cookies).toList;
+         c <- ca) yield c
 
   private def _init[B](request: Req, session: LiftSession)(f: () => B): B =
-  this._request.doWith(request) {
-    _sessionInfo.doWith(session) {
-      _responseHeaders.doWith(new ResponseInfoHolder) {
-        RequestVarHandler(Full(session),
-                          _responseCookies.doWith(CookieHolder(getCookies(containerRequest), Nil)) {
-            _innerInit(f)
-          }
-        )
+    this._request.doWith(request) {
+      _sessionInfo.doWith(session) {
+        _responseHeaders.doWith(new ResponseInfoHolder) {
+          RequestVarHandler(Full(session),
+            _responseCookies.doWith(CookieHolder(getCookies(containerRequest), Nil)) {
+              _innerInit(f)
+            }
+            )
+        }
       }
     }
-  }
 
   /**
    * This method is a convenience accessor for LiftRules.loggedInTest. You can define your own
@@ -1125,7 +1128,7 @@ object S extends HasParams {
    * @see LiftRules.unusedFunctionsLifeTime
    */
   def functionLifespan[T](span: Boolean)(f: => T): T =
-  _lifeTime.doWith(span)(f)
+    _lifeTime.doWith(span)(f)
 
   /**
    * Returns whether functions are currently extended to the lifetime of the session.
@@ -1160,10 +1163,10 @@ object S extends HasParams {
    * a given prefix. The prefixedAttrsToMetaData method can be used to add attributes onto an XML
    * node</p>
    *
-   * @see #prefixedAttrsToMap(String)
-   * @see #prefixedAttrsToMap(String,Map)
-   * @see #prefixedAttrsToMetaData(String)
-   * @see #prefixedAttrsToMetaData(String,Map)
+   * @see # prefixedAttrsToMap ( String )
+   * @see # prefixedAttrsToMap ( String, Map )
+   * @see # prefixedAttrsToMetaData ( String )
+   * @see # prefixedAttrsToMetaData ( String, Map )
    */
   def attrs: List[(Either[String, (String, String)], String)] = S._attrs.value match {
     case null => Nil
@@ -1179,18 +1182,18 @@ object S extends HasParams {
    *
    * @return Map[String, String]
    *
-   * @see #prefixedAttrsToMap(String)
-   * @see #prefixedAttrsToMetaData(String)
-   * @see #prefixedAttrsToMetaData(String,Map)
+   * @see # prefixedAttrsToMap ( String )
+   * @see # prefixedAttrsToMetaData ( String )
+   * @see # prefixedAttrsToMetaData ( String, Map )
    *
    */
   def prefixedAttrsToMap(prefix: String, start: Map[String, String]): Map[String, String] =
-  attrs.reverse.flatMap {
-    case (Right( (pre, name)), value) if pre == prefix => List((name, value))
-    case _ => Nil
-  }.foldRight(start){
-    case ((name, value), at) => at + (name -> value)
-  }
+    attrs.reverse.flatMap {
+      case (Right((pre, name)), value) if pre == prefix => List((name, value))
+      case _ => Nil
+    }.foldRight(start) {
+      case ((name, value), at) => at + (name -> value)
+    }
 
   /**
    * Returns the S attributes that are prefixed by 'prefix' parameter as a Map[String, String]
@@ -1199,13 +1202,13 @@ object S extends HasParams {
    *
    * @return Map[String, String]
    *
-   * @see #prefixedAttrsToMap(String,Map)
-   * @see #prefixedAttrsToMetaData(String)
-   * @see #prefixedAttrsToMetaData(String,Map)
+   * @see # prefixedAttrsToMap ( String, Map )
+   * @see # prefixedAttrsToMetaData ( String )
+   * @see # prefixedAttrsToMetaData ( String, Map )
    *
    */
   def prefixedAttrsToMap(prefix: String): Map[String, String] =
-  prefixedAttrsToMap(prefix: String, Map.empty)
+    prefixedAttrsToMap(prefix: String, Map.empty)
 
   /**
    * <p>Returns the S attributes that are prefixed by 'prefix' parameter as a MetaData.
@@ -1216,7 +1219,7 @@ object S extends HasParams {
    * do something like:</p>
    *
    * <pre name="code" class="scala" >
-   *   val myLink = (<a href={...}>...</a>) % S.prefixedAttrsToMetaData("anchor", Map("id" -> "myAnchor"))
+   *   val myLink = (<a href= {...} >...</a>) % S.prefixedAttrsToMetaData("anchor", Map("id" -> "myAnchor"))
    * </pre>
    *
    * @param prefix the prefix to be matched
@@ -1224,13 +1227,13 @@ object S extends HasParams {
    *
    * @return MetaData representing the combination of current attributes plus the start Map of attributes
    *
-   * @see #prefixedAttrsToMap(String)
-   * @see #prefixedAttrsToMap(String,Map)
-   * @see #prefixedAttrsToMetaData(String)
+   * @see # prefixedAttrsToMap ( String )
+   * @see # prefixedAttrsToMap ( String, Map )
+   * @see # prefixedAttrsToMetaData ( String )
    *
    */
   def prefixedAttrsToMetaData(prefix: String, start: Map[String, String]): MetaData =
-  mapToAttrs(prefixedAttrsToMap(prefix, start))
+    mapToAttrs(prefixedAttrsToMap(prefix, start))
 
   /**
    * Similar with prefixedAttrsToMetaData(prefix: String, start: Map[String, String])
@@ -1247,13 +1250,13 @@ object S extends HasParams {
    *
    * @return MetaData representing the Map of attributes as unprefixed attributes.
    *
-   * @see #prefixedAttrsToMetaData(String,Map)
+   * @see # prefixedAttrsToMetaData ( String, Map )
    *
    */
   def mapToAttrs(in: Map[String, String]): MetaData =
-  in.foldLeft[MetaData](Null) {
-    case (md, (name, value)) => new UnprefixedAttribute(name, value, md)
-  }
+    in.foldLeft[MetaData](Null) {
+      case (md, (name, value)) => new UnprefixedAttribute(name, value, md)
+    }
 
   /**
    * Converts the S.attrs to a Map[String, String]. The key of the map depends on whether
@@ -1261,12 +1264,12 @@ object S extends HasParams {
    * "prefix:name", while unprefixed attributes have keys of the form "name". If you only want
    * attributes for a specific prefix, use prefixedAttrsToMap.
    *
-   * @see #prefixedAttrsToMap(String)
-   * @see #prefixedAttrsToMap(String,Map)
+   * @see # prefixedAttrsToMap ( String )
+   * @see # prefixedAttrsToMap ( String, Map )
    */
   def attrsFlattenToMap: Map[String, String] = Map.empty ++ attrs.flatMap {
     case (Left(key), value) => List((key, value))
-    case (Right((prefix, key)), value)=> List((prefix+":"+key, value))
+    case (Right((prefix, key)), value) => List((prefix + ":" + key, value))
     case _ => Nil
   }
 
@@ -1280,12 +1283,12 @@ object S extends HasParams {
    * added to a div tag, you could do:
    *
    * <pre name="code" class="scala" >
-   * val myDiv = (<div>{...}</div>) % S.attrsToMetaData
+   * val myDiv = (<div> {...} </div>) % S.attrsToMetaData
    * </pre>
    *
    * @return a MetaData instance representing all attributes in S.attrs
    *
-   * @see #attrsToMetaData(String => Boolean)
+   * @see # attrsToMetaData ( String = > Boolean )
    */
   def attrsToMetaData: MetaData = attrsToMetaData(ignore => true)
 
@@ -1294,18 +1297,18 @@ object S extends HasParams {
    * generated MetaData. For example, if you only wanted the "id" attribute, you could do:
    *
    * <pre name="code" class="scala" >
-   * val myDiv = (<div>{...}</div>) % S.attrsToMetaData(_.equalsIgnoreCase("id"))
+   * val myDiv = (<div> {...} </div>) % S.attrsToMetaData(_.equalsIgnoreCase("id"))
    * </pre>
    *
    * @param predicate The predicate function which is executed for each attribute name. If the function
    * returns <code>true</code>, then the attribute is included in the MetaData.
    *
-   * @see #attrsToMetaData
+   * @see # attrsToMetaData
    *
    */
   def attrsToMetaData(predicate: String => Boolean): MetaData = {
     attrs.foldLeft[MetaData](Null) {
-      case (md, (Left(name), value)) if (predicate(name))=> new UnprefixedAttribute(name, value, md)
+      case (md, (Left(name), value)) if (predicate(name)) => new UnprefixedAttribute(name, value, md)
       case (md, (Right((prefix, name)), value)) if (predicate(name)) => new PrefixedAttribute(prefix, name, value, md)
       case _ => Null
     }
@@ -1321,12 +1324,12 @@ object S extends HasParams {
    * added to a div tag, you could do:
    *
    * <pre name="code" class="scala" >
-   * val myDiv = (<div>{...}</div>) % S.attrsToMetaData
+   * val myDiv = (<div> {...} </div>) % S.attrsToMetaData
    * </pre>
    *
    * @return a MetaData instance representing all attributes in S.attrs
    *
-   * @see #attrsToMetaData(String => Boolean)
+   * @see # attrsToMetaData ( String = > Boolean )
    */
   def currentAttrsToMetaData: MetaData = currentAttrsToMetaData(ignore => true)
 
@@ -1335,13 +1338,13 @@ object S extends HasParams {
    * generated MetaData. For example, if you only wanted the "id" attribute, you could do:
    *
    * <pre name="code" class="scala" >
-   * val myDiv = (<div>{...}</div>) % S.attrsToMetaData(_.equalsIgnoreCase("id"))
+   * val myDiv = (<div> {...} </div>) % S.attrsToMetaData(_.equalsIgnoreCase("id"))
    * </pre>
    *
    * @param predicate The predicate function which is executed for each attribute name. If the function
    * returns <code>true</code>, then the attribute is included in the MetaData.
    *
-   * @see #attrsToMetaData
+   * @see # attrsToMetaData
    *
    */
   def currentAttrsToMetaData(predicate: String => Boolean): MetaData = {
@@ -1356,46 +1359,46 @@ object S extends HasParams {
    * @param path The path for the template that you want to process
    * @return a Full Box containing the processed template, or a Failure if the template could not be found.
    *
-   * @see TempalateFinder#findAnyTemplate
+   * @see TempalateFinder # findAnyTemplate
    */
   def runTemplate(path: List[String]): Box[NodeSeq] =
-  for {
-    t <- TemplateFinder.findAnyTemplate(path) ?~ ("Couldn't find template "+path)
-    sess <- session ?~ "No current session"
-  } yield sess.processSurroundAndInclude(path.mkString("/", "/", ""), t)
+    for{
+      t <- TemplateFinder.findAnyTemplate(path) ?~ ("Couldn't find template " + path)
+      sess <- session ?~ "No current session"
+    } yield sess.processSurroundAndInclude(path.mkString("/", "/", ""), t)
 
   /**
    * Used to get an attribute by its name. There are several means to getting
    * attributes:
    *
    * <pre name="code" class="scala">
-   // Get a Box for the attribute:
-   val myAttr = S.attr("test") openOr "Not found"
+  // Get a Box for the attribute:
+  val myAttr = S.attr("test") openOr "Not found"
 
-   // Get an attribute or return a default value:
-   val myAttr = S.attr("name", "Fred")
+  // Get an attribute or return a default value:
+  val myAttr = S.attr("name", "Fred")
 
-   // Apply a transform function on the attribute value, or return an Empty:
-   val pageSize = S.attr("count", _.toInt) openOr 20
+  // Apply a transform function on the attribute value, or return an Empty:
+  val pageSize = S.attr("count", _.toInt) openOr 20
 
-   // There are also prefixed versions:
-   val prefixedAttr = S.attr("prefix", "name") openOr "Not found"
+  // There are also prefixed versions:
+  val prefixedAttr = S.attr("prefix", "name") openOr "Not found"
    * </pre>
    */
   object attr extends AttrHelper[Box] {
     type Info = String
 
     protected def findAttr(key: String): Option[Info] =
-    attrs.find {
-      case (Left(v), _) if v == key => true
-      case _ => false
-    }.map(_._2)
+      attrs.find {
+        case (Left(v), _) if v == key => true
+        case _ => false
+      }.map(_._2)
 
     protected def findAttr(prefix: String, key: String): Option[Info] =
-    attrs.find {
-      case (Right((p, n)), _) if (p == prefix && n == key) => true
-      case _ => false
-    }.map(_._2)
+      attrs.find {
+        case (Right((p, n)), _) if (p == prefix && n == key) => true
+        case _ => false
+      }.map(_._2)
 
     protected def convert[T](in: Option[T]): Box[T] = Box(in)
 
@@ -1419,15 +1422,15 @@ object S extends HasParams {
    * @param attr The attributes to set temporarily
    */
   def setVars[T](attr: MetaData)(f: => T): T = {
-    _attrs.doWith(attr.toList.map{
-        case pa: PrefixedAttribute => (Right(pa.pre, pa.key), pa.value.text)
-        case m => (Left(m.key), m.value.text)
-      } ::: attrs)(f)
+    _attrs.doWith(attr.toList.map {
+      case pa: PrefixedAttribute => (Right(pa.pre, pa.key), pa.value.text)
+      case m => (Left(m.key), m.value.text)
+    } ::: attrs)(f)
   }
 
-  def initIfUninitted[B](session: LiftSession)(f: => B) : B = {
+  def initIfUninitted[B](session: LiftSession)(f: => B): B = {
     if (inS.value) f
-    else init(Req.nil,session)(f)
+    else init(Req.nil, session)(f)
   }
 
   private object _currentAttrs extends RequestVar[MetaData](Null)
@@ -1447,22 +1450,22 @@ object S extends HasParams {
   /**
    * Returns the LiftSession parameter denominated by 'what'.
    *
-   * @see #getSessionAttribute
-   * @see #set
-   * @see #setSessionAttribute
-   * @see #unset
-   * @see #unsetSessionAttribute
+   * @see # getSessionAttribute
+   * @see # set
+   * @see # setSessionAttribute
+   * @see # unset
+   * @see # unsetSessionAttribute
    */
   def get(what: String): Box[String] = session.flatMap(_.get[String](what))
 
   /**
    * Returns the HttpSession parameter denominated by 'what'
    *
-   * @see #get
-   * @see #set
-   * @see #setSessionAttribute
-   * @see #unset
-   * @see #unsetSessionAttribute
+   * @see # get
+   * @see # set
+   * @see # setSessionAttribute
+   * @see # unset
+   * @see # unsetSessionAttribute
    *
    */
   def getSessionAttribute(what: String): Box[String] = containerSession.flatMap(_.attribute(what) match {case s: String => Full(s) case _ => Empty})
@@ -1476,7 +1479,7 @@ object S extends HasParams {
    * Returns the 'type' S attribute. This corresponds to the current Snippet's name. For example, the snippet:
    *
    * <pre name="code" class="xml">
-   &lt;lift:Hello.world /&gt;
+  &lt;lift:Hello.world /&gt;
    * </pre>
    *
    * Will return "Hello.world".
@@ -1486,11 +1489,11 @@ object S extends HasParams {
   /**
    * Sets a HttpSession attribute
    *
-   * @see #get
-   * @see #getSessionAttribute
-   * @see #set
-   * @see #unset
-   * @see #unsetSessionAttribute
+   * @see # get
+   * @see # getSessionAttribute
+   * @see # set
+   * @see # unset
+   * @see # unsetSessionAttribute
    *
    */
   def setSessionAttribute(name: String, value: String) = containerSession.foreach(_.setAttribute(name, value))
@@ -1498,23 +1501,23 @@ object S extends HasParams {
   /**
    * Sets a LiftSession attribute
    *
-   * @see #get
-   * @see #getSessionAttribute
-   * @see #setSessionAttribute
-   * @see #unset
-   * @see #unsetSessionAttribute
+   * @see # get
+   * @see # getSessionAttribute
+   * @see # setSessionAttribute
+   * @see # unset
+   * @see # unsetSessionAttribute
    *
    */
-  def set(name: String, value: String) = session.foreach(_.set(name,value))
+  def set(name: String, value: String) = session.foreach(_.set(name, value))
 
   /**
    * Removes a HttpSession attribute
    *
-   * @see #get
-   * @see #getSessionAttribute
-   * @see #set
-   * @see #setSessionAttribute
-   * @see #unset
+   * @see # get
+   * @see # getSessionAttribute
+   * @see # set
+   * @see # setSessionAttribute
+   * @see # unset
    *
    */
   def unsetSessionAttribute(name: String) = containerSession.foreach(_.removeAttribute(name))
@@ -1522,11 +1525,11 @@ object S extends HasParams {
   /**
    * Removes a LiftSession attribute
    *
-   * @see #get
-   * @see #getSessionAttribute
-   * @see #set
-   * @see #setSessionAttribute
-   * @see #unsetSessionAttribute
+   * @see # get
+   * @see # getSessionAttribute
+   * @see # set
+   * @see # setSessionAttribute
+   * @see # unsetSessionAttribute
    *
    */
   def unset(name: String) = session.foreach(_.unset(name))
@@ -1535,7 +1538,7 @@ object S extends HasParams {
    * The current container request
    */
   def containerRequest: Box[HTTPRequest] =
-  request.flatMap(r => Box !! r.request)
+    request.flatMap(r => Box !! r.request)
 
   /**
    * The hostname to which the request was sent. This is taken from the "Host" HTTP header, or if that
@@ -1551,10 +1554,10 @@ object S extends HasParams {
    * not include the template path or query string.
    */
   def hostAndPath: String =
-  containerRequest.map(r => (r.scheme, r.serverPort) match {
-      case ("http", 80) => "http://"+r.serverName+contextPath
-      case ("https", 443) => "https://"+r.serverName+contextPath
-      case (sch, port) => sch + "://"+r.serverName+":"+port+contextPath
+    containerRequest.map(r => (r.scheme, r.serverPort) match {
+      case ("http", 80) => "http://" + r.serverName + contextPath
+      case ("https", 443) => "https://" + r.serverName + contextPath
+      case (sch, port) => sch + "://" + r.serverName + ":" + port + contextPath
     }) openOr ""
 
   /**
@@ -1562,8 +1565,8 @@ object S extends HasParams {
    * bindings is considered advanced functionality.
    */
   def functionMap: Map[String, AFuncHolder] =
-  Box.legacyNullTest(_functionMap.value).
-  map(s => Map(s.elements.toList :_*)).openOr(Map.empty)
+    Box.legacyNullTest(_functionMap.value).
+            map(s => Map(s.elements.toList: _*)).openOr(Map.empty)
 
   /**
    * Clears the function map.  potentially very destuctive... use at your own risk!
@@ -1573,7 +1576,7 @@ object S extends HasParams {
   /**
    * The current context path for the deployment.
    */
-  def contextPath : String = session.map(_.contextPath) openOr ""
+  def contextPath: String = session.map(_.contextPath) openOr ""
 
   /**
    * Finds a snippet function by name.
@@ -1608,31 +1611,31 @@ object S extends HasParams {
    * which snippet function to use for a given snippet in the template. Our code would look like:
    *
    * <pre name="code" class="scala" >
-   import _root_.scala.xml.{NodeSeq,Text}
-   class SnipMap {
-   def topSnippet (xhtml : NodeSeq) : NodeSeq = {
-   if (S.param("showAll").isDefined) {
-   S.mapSnippet("listing", listing)
-   } else {
-   S.mapSnippet("listing", { ignore => Text("") })
-   }
+  import _root_.scala.xml.{ NodeSeq,Text }
+  class SnipMap  {
+  def topSnippet (xhtml : NodeSeq) : NodeSeq =  {
+  if (S.param("showAll").isDefined)  {
+  S.mapSnippet("listing", listing)
+  } else  {
+  S.mapSnippet("listing",  { ignore => Text("") } )
+  }
 
-   ...
-   }
+  ...
+  }
 
-   def listing(xhtml : NodeSeq) : NodeSeq = {
-   ...
-   }
-   </pre>
+  def listing(xhtml : NodeSeq) : NodeSeq =  {
+  ...
+  }
+  </pre>
    *
    * Then, your template would simply look like:
    *
    * <pre name="code" class="scala" >
-   &lt;lift:surround with="default" at="content"&gt;
-   ...
-   &lt;p&gt;&lt;lift:SnipMap.topSnippet /&gt;&lt;/p&gt;
-   &lt;p&gt;&lt;lift:listing /&gt;&lt;/p&gt;
-   &lt;/lift:surround&gt;
+  &lt;lift:surround with="default" at="content"&gt;
+  ...
+  &lt;p&gt;&lt;lift:SnipMap.topSnippet /&gt;&lt;/p&gt;
+  &lt;p&gt;&lt;lift:listing /&gt;&lt;/p&gt;
+  &lt;/lift:surround&gt;
    * </pre>
    *
    * Snippets are processed in the order that they're defined in the
@@ -1665,12 +1668,12 @@ object S extends HasParams {
    * Build a handler for incoming JSON commands
    *
    * @param f - function returning a JsCmds
-   * @return (JsonCall, JsCmd)
+   * @return ( JsonCall, JsCmd )
    */
   def buildJsonFunc(f: Any => JsCmd): (JsonCall, JsCmd) = buildJsonFunc(Empty, Empty, f)
 
   def buildJsonFunc(onError: JsCmd, f: Any => JsCmd): (JsonCall, JsCmd) =
-  buildJsonFunc(Empty, Full(onError), f)
+    buildJsonFunc(Empty, Full(onError), f)
 
   private[http] object _formGroup extends RequestVar[Box[Int]](Empty)
   private object formItemNumber extends RequestVar[Int](0)
@@ -1681,7 +1684,7 @@ object S extends HasParams {
     formItemNumber.set(num + 1)
     import _root_.java.text._
     val prefix: String = new DecimalFormat("00000000000000000").format(bump + num)
-    "f"+prefix+"_"+Helpers.hashHex((new Exception).getStackTrace.toList.take(10).map(_.toString).mkString(","))
+    "f" + prefix + "_" + Helpers.hashHex((new Exception).getStackTrace.toList.take(10).map(_.toString).mkString(","))
   } else {
     _formGroup.is match {
       case Full(x) => Helpers.nextFuncName(x.toLong * 10000L)
@@ -1705,10 +1708,10 @@ object S extends HasParams {
    * @param name -- the optional name of the command (placed in a comment for testing)
    *
    * @param f - function returning a JsCmds
-   * @return (JsonCall, JsCmd)
+   * @return ( JsonCall, JsCmd )
    */
   def buildJsonFunc(name: Box[String], onError: Box[JsCmd], f: Any => JsCmd): (JsonCall, JsCmd) = {
-    functionLifespan(true){
+    functionLifespan(true) {
       val key = formFuncName
 
       def checkCmd(in: Any) = in match {
@@ -1717,41 +1720,41 @@ object S extends HasParams {
           val v = v2.asInstanceOf[_root_.scala.collection.Map[String, Any]]
           JsonCmd(v("command").toString, v.get("target").
                   map {
-              case null => null
-              case x => x.toString
-            } getOrElse(null),v.get("params").getOrElse(None), v)
+            case null => null
+            case x => x.toString
+          } getOrElse (null), v.get("params").getOrElse(None), v)
 
         case v => v
       }
 
       def jsonCallback(in: List[String]): JsCmd = {
-        in.firstOption.toList.flatMap{
+        in.firstOption.toList.flatMap {
           s =>
-          val parsed = JSONParser.parse(s.trim).toList
-          val cmds = parsed.map(checkCmd)
-          val ret = cmds.map(f)
-          ret
+                  val parsed = JSONParser.parse(s.trim).toList
+                  val cmds = parsed.map(checkCmd)
+                  val ret = cmds.map(f)
+                  ret
         }.foldLeft(JsCmds.Noop)(_ & _)
       }
 
       val onErrorFunc: String =
-      onError.map(f => JsCmds.Run("function onError_"+key+"() {"+f.toJsCmd+"""
+      onError.map(f => JsCmds.Run("function onError_" + key + "() {" + f.toJsCmd + """
 }
 
  """).toJsCmd) openOr ""
 
-      val onErrorParam = onError.map(f => "onError_"+key) openOr "null"
+      val onErrorParam = onError.map(f => "onError_" + key) openOr "null"
 
       val af: AFuncHolder = jsonCallback _
       addFunctionMap(key, af)
 
       (JsonCall(key), JsCmds.Run(name.map(n => onErrorFunc +
-                                          "/* JSON Func "+n+" $$ "+key+" */").openOr("") +
-                                 "function "+key+"(obj) {liftAjax.lift_ajaxHandler(" +
-                                 "'" + key + "='+ encodeURIComponent(" +
-                                 LiftRules.jsArtifacts.
-                                 jsonStringify(JE.JsRaw("obj")).
-                                 toJsCmd +"), null,"+onErrorParam+");}"))
+              "/* JSON Func " + n + " $$ " + key + " */").openOr("") +
+              "function " + key + "(obj) {liftAjax.lift_ajaxHandler(" +
+              "'" + key + "='+ encodeURIComponent(" +
+              LiftRules.jsArtifacts.
+                      jsonStringify(JE.JsRaw("obj")).
+                      toJsCmd + "), null," + onErrorParam + ");}"))
     }
   }
 
@@ -1762,7 +1765,9 @@ object S extends HasParams {
   private[http] def noticesToJsCmd: JsCmd = LiftRules.noticesToJsCmd()
 
   implicit def toLFunc(in: List[String] => Any): AFuncHolder = LFuncHolder(in, Empty)
+
   implicit def toNFunc(in: () => Any): AFuncHolder = NFuncHolder(in, Empty)
+
   implicit def stuff2ToUnpref(in: (Symbol, Any)): UnprefixedAttribute = new UnprefixedAttribute(in._1.name, Text(in._2.toString), Null)
 
   /**
@@ -1770,8 +1775,8 @@ object S extends HasParams {
    * this request is submitted to server the function will be executed and then
    * it is automatically cleaned up from functions caches.
    */
-  def mapFuncToURI(uri: String, f : () => Unit): String = {
-    session map (_ attachRedirectFunc(uri, Box.legacyNullTest(f))) openOr uri
+  def mapFuncToURI(uri: String, f: () => Unit): String = {
+    session map (_ attachRedirectFunc (uri, Box.legacyNullTest(f))) openOr uri
   }
 
   /**
@@ -1780,25 +1785,43 @@ object S extends HasParams {
   @serializable
   sealed trait AFuncHolder extends Function1[List[String], Any] {
     def owner: Box[String]
+
     def apply(in: List[String]): Any
-    def apply(in: FileParamHolder): Any
+
+    def apply(in: FileParamHolder): Any = {
+      error("Attempt to apply file upload to a non-file upload handler")
+    }
+
     def supportsFileParams_? : Boolean = false
+
     def duplicate(newOwner: String): AFuncHolder = new ProxyFuncHolder(this, Full(newOwner))
-    @volatile private[http] var lastSeen: Long = millis
+
+    @volatile private[this] var _lastSeen: Long = millis
+
+    private[http] def lastSeen = _lastSeen
+
+    private[http] def lastSeen_=(when: Long) = _lastSeen = when
+
     def sessionLife: Boolean = _sessionLife
+
     private[this] val _sessionLife: Boolean = functionLifespan_?
   }
 
-  private[http] class ProxyFuncHolder(proxyTo: AFuncHolder,_owner: Box[String]) extends AFuncHolder {
-    def this(proxyTo: AFuncHolder) = this(proxyTo, Empty)
+  private[http] class ProxyFuncHolder(proxyTo: AFuncHolder, _owner: Box[String]) extends AFuncHolder {
+    def this(proxyTo: AFuncHolder) = this (proxyTo, Empty)
 
-  def owner: Box[String] = _owner or proxyTo.owner
+    def owner: Box[String] = _owner or proxyTo.owner
+
     def apply(in: List[String]): Any = proxyTo.apply(in)
-    def apply(in: FileParamHolder): Any = proxyTo.apply(in)
-    def supportsFileParams_? : Boolean = proxyTo.supportsFileParams_?
-    def duplicate(newOwner: String): AFuncHolder = new ProxyFuncHolder(proxyTo, Full(newOwner))
-    private[http] def lastSeen: Long = proxyTo.lastSeen
-    private[http] def lastSeen_=(when: Long) = proxyTo.lastSeen = when
+
+    override def apply(in: FileParamHolder): Any = proxyTo.apply(in)
+
+    override def supportsFileParams_? : Boolean = proxyTo.supportsFileParams_?
+
+    override private[http] def lastSeen: Long = proxyTo.lastSeen
+
+    override private[http] def lastSeen_=(when: Long) = proxyTo.lastSeen = when
+
     override def sessionLife = proxyTo.sessionLife
   }
 
@@ -1808,17 +1831,21 @@ object S extends HasParams {
   @serializable
   private final class BinFuncHolder(val func: FileParamHolder => Any, val owner: Box[String]) extends AFuncHolder {
     def apply(in: List[String]) {Log.error("You attempted to call a 'File Upload' function with a normal parameter.  Did you forget to 'enctype' to 'multipart/form-data'?")}
-    def apply(in: FileParamHolder) = func(in)
+
+    override def apply(in: FileParamHolder) = func(in)
+
     override def supportsFileParams_? : Boolean = true
   }
 
   object BinFuncHolder {
     def apply(func: FileParamHolder => Any): AFuncHolder = new BinFuncHolder(func, Empty)
+
     def apply(func: FileParamHolder => Any, owner: Box[String]): AFuncHolder = new BinFuncHolder(func, owner)
   }
 
   object SFuncHolder {
     def apply(func: String => Any): AFuncHolder = new SFuncHolder(func, Empty)
+
     def apply(func: String => Any, owner: Box[String]): AFuncHolder = new SFuncHolder(func, owner)
   }
 
@@ -1828,12 +1855,14 @@ object S extends HasParams {
    */
   @serializable
   private final class SFuncHolder(val func: String => Any, val owner: Box[String]) extends AFuncHolder {
-    def this(func: String => Any) = this(func, Empty)
+    def this(func: String => Any) = this (func, Empty)
+
     def apply(in: List[String]): Any = in.firstOption.toList.map(func(_))
   }
 
   object LFuncHolder {
     def apply(func: List[String] => Any): AFuncHolder = new LFuncHolder(func, Empty)
+
     def apply(func: List[String] => Any, owner: Box[String]): AFuncHolder = new LFuncHolder(func, owner)
   }
 
@@ -1842,12 +1871,13 @@ object S extends HasParams {
    * takes a List[String] as the only parameter and returns an Any.
    */
   @serializable
-  private final class LFuncHolder(val func: List[String] => Any,val owner: Box[String]) extends AFuncHolder {
+  private final class LFuncHolder(val func: List[String] => Any, val owner: Box[String]) extends AFuncHolder {
     def apply(in: List[String]): Any = func(in)
   }
 
   object NFuncHolder {
     def apply(func: () => Any): AFuncHolder = new NFuncHolder(func, Empty)
+
     def apply(func: () => Any, owner: Box[String]): AFuncHolder = new NFuncHolder(func, owner)
   }
 
@@ -1856,7 +1886,7 @@ object S extends HasParams {
    * takes zero arguments and returns an Any.
    */
   @serializable
-  private final class NFuncHolder(val func: () => Any,val owner: Box[String]) extends AFuncHolder {
+  private final class NFuncHolder(val func: () => Any, val owner: Box[String]) extends AFuncHolder {
     def apply(in: List[String]): Any = in.firstOption.toList.map(s => func())
   }
 
@@ -1864,25 +1894,36 @@ object S extends HasParams {
    * Maps a function with an random generated and name
    */
   def fmapFunc[T](in: AFuncHolder)(f: String => T): T = //
-  {
-    val name = formFuncName
-    addFunctionMap(name, in)
-    f(name)
+    {
+      val name = formFuncName
+      addFunctionMap(name, in)
+      f(name)
+    }
+
+  /**
+   * Wrap an AFuncHolder with the current snippet and Loc context so that for Ajax calls, the original snippets,
+   * RequestVars and Loc (location) are populated
+   *
+   * @param f the AFuncHolder that you want to wrap with execution context
+   */
+  def contextFuncBuilder(f: S.AFuncHolder): S.AFuncHolder = S.session match {
+    case Full(s) => s.contextFuncBuilder(f)
+    case _ => f
   }
 
   /**
    * Maps a function with an random generated and name
    */
   def jsonFmapFunc[T](in: Any => JsObj)(f: String => T): T = //
-  {
-    val name = formFuncName
-    addFunctionMap(name, SFuncHolder((s: String) => JSONParser.parse(s).map(in) openOr js.JE.JsObj()))
-    f(name)
-  }
+    {
+      val name = formFuncName
+      addFunctionMap(name, SFuncHolder((s: String) => JSONParser.parse(s).map(in) openOr js.JE.JsObj()))
+      f(name)
+    }
 
-  def render(xhtml:NodeSeq, httpRequest: HTTPRequest): NodeSeq = {
+  def render(xhtml: NodeSeq, httpRequest: HTTPRequest): NodeSeq = {
     def doRender(session: LiftSession): NodeSeq =
-    session.processSurroundAndInclude("external render", xhtml)
+      session.processSurroundAndInclude("external render", xhtml)
 
     if (inS.value) doRender(session.open_!)
     else {
@@ -1931,6 +1972,7 @@ object S extends HasParams {
    * Returns all the HTTP parameters having 'n' name
    */
   def params(n: String): List[String] = request.flatMap(_.params.get(n)).openOr(Nil)
+
   /**
    * Returns the HTTP parameter having 'n' name
    */
@@ -1940,60 +1982,73 @@ object S extends HasParams {
    * Sets an ERROR notice as a plain text
    */
   def error(n: String) {error(Text(n))}
+
   /**
    * Sets an ERROR notice as an XML sequence
    */
-  def error(n: NodeSeq) {p_notice.is += (NoticeType.Error, n,  Empty)}
+  def error(n: NodeSeq) {p_notice.is += (NoticeType.Error, n, Empty)}
+
   /**
    * Sets an ERROR notice as an XML sequence and associates it with an id
    */
-  def error(id:String, n: NodeSeq) {p_notice.is += (NoticeType.Error, n,  Full(id))}
+  def error(id: String, n: NodeSeq) {p_notice.is += (NoticeType.Error, n, Full(id))}
+
   /**
    * Sets an ERROR notice as plain text and associates it with an id
    */
-  def error(id:String, n: String) {error(id, Text(n))}
+  def error(id: String, n: String) {error(id, Text(n))}
+
   /**
    * Sets an NOTICE notice as plain text
    */
   def notice(n: String) {notice(Text(n))}
+
   /**
    * Sets an NOTICE notice as an XML sequence
    */
   def notice(n: NodeSeq) {p_notice.is += (NoticeType.Notice, n, Empty)}
+
   /**
    * Sets an NOTICE notice as and XML sequence and associates it with an id
    */
-  def notice(id:String, n: NodeSeq) {p_notice.is += (NoticeType.Notice, n,  Full(id))}
+  def notice(id: String, n: NodeSeq) {p_notice.is += (NoticeType.Notice, n, Full(id))}
+
   /**
    * Sets an NOTICE notice as plai text and associates it with an id
    */
-  def notice(id:String, n: String) {notice(id, Text(n))}
+  def notice(id: String, n: String) {notice(id, Text(n))}
+
   /**
    * Sets an WARNING notice as plain text
    */
   def warning(n: String) {warning(Text(n))}
+
   /**
    * Sets an WARNING notice as an XML sequence
    */
   def warning(n: NodeSeq) {p_notice += (NoticeType.Warning, n, Empty)}
+
   /**
    * Sets an WARNING notice as an XML sequence and associates it with an id
    */
-  def warning(id:String, n: NodeSeq) {p_notice += (NoticeType.Warning, n,  Full(id))}
+  def warning(id: String, n: NodeSeq) {p_notice += (NoticeType.Warning, n, Full(id))}
+
   /**
    * Sets an WARNING notice as plain text and associates it with an id
    */
-  def warning(id:String, n: String) {warning(id, Text(n))}
+  def warning(id: String, n: String) {warning(id, Text(n))}
 
   /**
    * Sets an ERROR notices from a List[FieldError]
    */
-  def error(vi: List[FieldError]) {p_notice ++= vi.map{i => (NoticeType.Error, i.msg, i.field.uniqueFieldId )}}
+  def error(vi: List[FieldError]) {p_notice ++= vi.map {i => (NoticeType.Error, i.msg, i.field.uniqueFieldId)}}
 
 
-  private [http] def message(msg: String, notice: NoticeType.Value) { message(Text(msg), notice)}
-  private [http] def message(msg: NodeSeq, notice: NoticeType.Value) { p_notice += (notice, msg, Empty)}
-  private [http] def messagesFromList(list: List[(NoticeType.Value, NodeSeq, Box[String])]) { list foreach ( p_notice += _) }
+  private[http] def message(msg: String, notice: NoticeType.Value) {message(Text(msg), notice)}
+
+  private[http] def message(msg: NodeSeq, notice: NoticeType.Value) {p_notice += (notice, msg, Empty)}
+
+  private[http] def messagesFromList(list: List[(NoticeType.Value, NodeSeq, Box[String])]) {list foreach (p_notice += _)}
 
   /**
    * Returns the current notices
@@ -2004,14 +2059,17 @@ object S extends HasParams {
    * Returns only ERROR notices
    */
   def errors: List[(NodeSeq, Box[String])] = List(oldNotices.is, p_notice.is).flatMap(_.filter(_._1 == NoticeType.Error).map(n => (n._2, n._3)))
+
   /**
    * Returns only NOTICE notices
    */
   def notices: List[(NodeSeq, Box[String])] = List(oldNotices.is, p_notice.is).flatMap(_.filter(_._1 == NoticeType.Notice).map(n => (n._2, n._3)))
+
   /**
    * Returns only WARNING notices
    */
   def warnings: List[(NodeSeq, Box[String])] = List(oldNotices.is, p_notice.is).flatMap(_.filter(_._1 == NoticeType.Warning).map(n => (n._2, n._3)))
+
   /**
    * Clears up the notices
    */
@@ -2023,7 +2081,7 @@ object S extends HasParams {
    * @param id - the lookup id
    * @param f - the function that returns the messages
    */
-  def messagesById(id: String)(f: => List[(NodeSeq, Box[String])]): List[NodeSeq] = f filter( _._2 map (_ equals id ) openOr false) map(_._1)
+  def messagesById(id: String)(f: => List[(NodeSeq, Box[String])]): List[NodeSeq] = f filter (_._2 map (_ equals id) openOr false) map (_._1)
 
   /**
    *  Returns all messages, associated with any id or not
@@ -2037,7 +2095,7 @@ object S extends HasParams {
    *
    * @param f - the function that returns the messages
    */
-  def noIdMessages(f: => List[(NodeSeq, Box[String])]): List[NodeSeq] = f filter( _._2 isEmpty) map (_._1)
+  def noIdMessages(f: => List[(NodeSeq, Box[String])]): List[NodeSeq] = f filter (_._2 isEmpty) map (_._1)
 
   /**
    * Returns the messages that are associated with any id.
@@ -2045,11 +2103,11 @@ object S extends HasParams {
    *
    * @param f - the function that returns the messages
    */
-  def idMessages(f: => List[(NodeSeq, Box[String])]):List[(String, List[NodeSeq])] = {
+  def idMessages(f: => List[(NodeSeq, Box[String])]): List[(String, List[NodeSeq])] = {
     val res = new HashMap[String, List[NodeSeq]]
-    f filter(  _._2.isEmpty == false) foreach (_ match {
-        case (node, id) => val key = id open_!; res += (key -> (res.getOrElseUpdate(key, Nil) ::: List(node)))
-      })
+    f filter (_._2.isEmpty == false) foreach (_ match {
+      case (node, id) => val key = id open_!; res += (key -> (res.getOrElseUpdate(key, Nil) ::: List(node)))
+    })
 
     res toList
   }
@@ -2069,17 +2127,18 @@ object NoticeType extends Enumeration {
  * Used to handles JSON requests
  */
 abstract class JsonHandler {
-  private val name = "_lift_json_"+getClass.getName
+  private val name = "_lift_json_" + getClass.getName
+
   private def handlers: (JsonCall, JsCmd) =
-  S.session.map(s => s.get[Any](name) match {
-      case Full((x: JsonCall, y: JsCmd)) =>  (x, y)
+    S.session.map(s => s.get[Any](name) match {
+      case Full((x: JsonCall, y: JsCmd)) => (x, y)
 
       case _ =>
         val ret: (JsonCall, JsCmd) = S.buildJsonFunc(this.apply)
         s.set(name, ret)
         ret
     }
-  ).openOr( (JsonCall(""), JsCmds.Noop) )
+      ).openOr((JsonCall(""), JsCmds.Noop))
 
   def call: JsonCall = handlers._1
 

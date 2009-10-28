@@ -28,7 +28,7 @@ object ResourceServer {
     case "json2.js" :: Nil => true
     case "json.js" :: Nil => true
     case "jlift.js" :: Nil => true
-    case bp @ ("blueprint" :: _) if bp.last.endsWith(".css") || bp.last.endsWith(".png") => true
+    case bp@("blueprint" :: _) if bp.last.endsWith(".css") || bp.last.endsWith(".png") => true
     case "jquery-autocomplete" :: "jquery.autocomplete.js" :: Nil => true
     case "jquery-autocomplete" :: "jquery.autocomplete.css" :: Nil => true
     case "jquery-autocomplete" :: "indicator.gif" :: Nil => true
@@ -39,8 +39,8 @@ object ResourceServer {
     //case "json.js" :: Nil => List( "json2.js") // List( "json2-min.js")
     //case "json2.js" :: Nil => List( "json2.js") // List( "json2-min.js")
     case "jquery.js" :: Nil => List("jquery-1.3.2-min.js")
-    case "json.js" :: Nil => List( "json2-min.js")
-    case "json2.js" :: Nil => List( "json2-min.js")
+    case "json.js" :: Nil => List("json2-min.js")
+    case "json2.js" :: Nil => List("json2-min.js")
     case xs => xs
   }
 
@@ -51,34 +51,34 @@ object ResourceServer {
 
   def calcLastModified(in: URLConnection): Long = in.getLastModified match {
     case 0L => in match {
-        case jc: JarURLConnection => jc.getJarEntry() match {
-            case null => 0L
-            case e => e.getTime()
-          }
-        case _ => 0L
+      case jc: JarURLConnection => jc.getJarEntry() match {
+        case null => 0L
+        case e => e.getTime()
       }
+      case _ => 0L
+    }
     case x => x
   }
 
 
   def findResourceInClasspath(request: Req, uri: List[String])(): Box[LiftResponse] =
-  for {
-    auri <- Full(uri.filter(!_.startsWith("."))) if isAllowed(auri)
-    rw = baseResourceLocation :: pathRewriter(auri)
-    path = rw.mkString("/", "/", "")
-    url <- LiftRules.getResource(path)
-    uc <- tryo(url.openConnection)
-    lastModified = calcLastModified(uc)
-  } yield
-  request.testFor304(lastModified, "Expires" -> toInternetDate(millis + 30.days)) openOr {
-    val stream = url.openStream
-    StreamingResponse(stream, () => stream.close, uc.getContentLength,
-                      (if (lastModified == 0L) Nil else
-                       List(("Last-Modified", toInternetDate(lastModified)))) :::
-                      List(("Expires", toInternetDate(millis + 30.days)),
-                           ("Content-Type", detectContentType(rw.last))), Nil,
-                      200)
-  }
+    for{
+      auri <- Full(uri.filter(!_.startsWith("."))) if isAllowed(auri)
+      rw = baseResourceLocation :: pathRewriter(auri)
+      path = rw.mkString("/", "/", "")
+      url <- LiftRules.getResource(path)
+      uc <- tryo(url.openConnection)
+      lastModified = calcLastModified(uc)
+    } yield
+      request.testFor304(lastModified, "Expires" -> toInternetDate(millis + 30.days)) openOr {
+        val stream = url.openStream
+        StreamingResponse(stream, () => stream.close, uc.getContentLength,
+          (if (lastModified == 0L) Nil else
+            List(("Last-Modified", toInternetDate(lastModified)))) :::
+                  List(("Expires", toInternetDate(millis + 30.days)),
+                    ("Content-Type", detectContentType(rw.last))), Nil,
+          200)
+      }
 
 
   /**
@@ -89,14 +89,14 @@ object ResourceServer {
    *
    * @param path Resource name to be analyzed to detect MIME type
    *
-   * @see HTTPContext#mimeType(String)
-   * @see URLConnection#getFileNameMap()
+   * @see HTTPContext # mimeType ( String )
+   * @see URLConnection # getFileNameMap ( )
    */
-  def detectContentType(path: String) : String = {
+  def detectContentType(path: String): String = {
     // Configure response with content type of resource
     (LiftRules.context.mimeType(path) or
-     (Box !! URLConnection.getFileNameMap().getContentTypeFor(path))) openOr
-    "application/octet-stream"
+            (Box !! URLConnection.getFileNameMap().getContentTypeFor(path))) openOr
+            "application/octet-stream"
   }
 
   private def isAllowed(path: List[String]) = allowedPaths.isDefinedAt(path) && allowedPaths(path)

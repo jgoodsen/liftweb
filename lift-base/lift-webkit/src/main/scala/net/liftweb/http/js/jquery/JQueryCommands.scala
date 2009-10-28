@@ -36,18 +36,17 @@ trait JQueryRight {
 trait JQueryLeft {
   this: JsExp =>
   def >>(that: JQueryRight): JsExp = new JsExp {
-    def toJsCmd = JQueryLeft.this.toJsCmd + "."+ that.toJsCmd
+    def toJsCmd = JQueryLeft.this.toJsCmd + "." + that.toJsCmd
   }
 
 
   def >>(that: JQueryLeft with JQueryRight): JsExp with JQueryLeft =
-  new JsExp with JQueryLeft {
-    def toJsCmd = JQueryLeft.this.toJsCmd + "."+ that.toJsCmd
-  }
+    new JsExp with JQueryLeft {
+      def toJsCmd = JQueryLeft.this.toJsCmd + "." + that.toJsCmd
+    }
 }
 
 object JqJE {
-
   case object JqScrollToBottom extends JsExp with JQueryRight with JQueryLeft {
     def toJsCmd = "each(function(i) {this.scrollTop=this.scrollHeight;})"
   }
@@ -64,7 +63,7 @@ object JqJE {
    * A JQuery query
    */
   case class Jq(query: JsExp) extends JsExp with JQueryLeft {
-    override def toJsCmd = "jQuery("+query.toJsCmd+")"
+    override def toJsCmd = "jQuery(" + query.toJsCmd + ")"
   }
 
   case object JqDoc extends JsExp with JQueryLeft {
@@ -72,29 +71,30 @@ object JqJE {
   }
 
   case class JqKeypress(what: (Char, JsCmd)*) extends JsExp with JQueryRight {
-    override def toJsCmd = "keypress(function(e) {"+
-    what.map{ case (chr, cmd) =>
-        "if (e.which == "+chr.toInt+") {"+cmd.toJsCmd+"}"
-    }.mkString(" else \n")+
-    "})"
+    override def toJsCmd = "keypress(function(e) {" +
+            what.map {
+              case (chr, cmd) =>
+                "if (e.which == " + chr.toInt + ") {" + cmd.toJsCmd + "}"
+            }.mkString(" else \n") +
+            "})"
   }
 
   /**
    * A JQuery query for an element based on the id of the element
    */
   case class JqId(id: JsExp) extends JsExp with JQueryLeft {
-    override def toJsCmd = "jQuery('#'+"+id.toJsCmd+")"
+    override def toJsCmd = "jQuery('#'+" + id.toJsCmd + ")"
   }
 
   case class JqAttr(key: String, value: JsExp) extends JsExp with JQueryRight with JQueryLeft {
-    def toJsCmd = "attr("+key.encJs+", "+value.toJsCmd+")"
+    def toJsCmd = "attr(" + key.encJs + ", " + value.toJsCmd + ")"
   }
 
   /**
    * Append content to a JQuery
    */
   case class JqAppend(content: NodeSeq) extends JsExp with JQueryRight with JQueryLeft {
-    override val toJsCmd = "append("+fixHtml("inline", content)+")"
+    override val toJsCmd = "append(" + fixHtml("inline", content) + ")"
   }
 
   /**
@@ -109,28 +109,28 @@ object JqJE {
    * AppendTo content to a JQuery
    */
   case class JqAppendTo(content: NodeSeq) extends JsExp with JQueryRight with JQueryLeft {
-    override val toJsCmd = "appendTo("+fixHtml("inline", content)+")"
+    override val toJsCmd = "appendTo(" + fixHtml("inline", content) + ")"
   }
 
   /**
    * Prepend content to a JQuery
    */
   case class JqPrepend(content: NodeSeq) extends JsExp with JQueryRight with JQueryLeft {
-    override val toJsCmd = "prepend("+fixHtml("inline", content)+")"
+    override val toJsCmd = "prepend(" + fixHtml("inline", content) + ")"
   }
 
   /**
    * PrependTo content to a JQuery
    */
   case class JqPrependTo(content: NodeSeq) extends JsExp with JQueryRight with JQueryLeft {
-    override val toJsCmd = "prependTo("+fixHtml("inline", content)+")"
+    override val toJsCmd = "prependTo(" + fixHtml("inline", content) + ")"
   }
 
   object JqCss {
     def apply(name: JsExp, value: JsExp): JsExp with JQueryRight with JQueryLeft =
-    new JsExp with JQueryRight with JQueryLeft {
-      override def toJsCmd = "css("+name.toJsCmd+","+value.toJsCmd+")"
-    }
+      new JsExp with JQueryRight with JQueryLeft {
+        override def toJsCmd = "css(" + name.toJsCmd + "," + value.toJsCmd + ")"
+      }
   }
 
   /**
@@ -138,7 +138,7 @@ object JqJE {
    * a cleaner innerHTML.
    */
   case class JqEmptyAfter(content: NodeSeq) extends JsExp with JQueryRight with JQueryLeft {
-    override val toJsCmd = "empty().after("+fixHtml("inline", content)+")"
+    override val toJsCmd = "empty().after(" + fixHtml("inline", content) + ")"
   }
 
   object JqHtml {
@@ -147,7 +147,7 @@ object JqJE {
     }
 
     def apply(content: NodeSeq) = new JsExp with JQueryRight with JQueryLeft {
-      val toJsCmd = "html("+fixHtml("inline", content)+")"
+      val toJsCmd = "html(" + fixHtml("inline", content) + ")"
     }
   }
 
@@ -157,7 +157,7 @@ object JqJE {
     }
 
     def apply(content: String) = new JsExp with JQueryRight with JQueryLeft {
-      def toJsCmd = "text("+content.encJs+")"
+      def toJsCmd = "text(" + content.encJs + ")"
     }
   }
 
@@ -181,32 +181,31 @@ object JqJE {
 
   object JqTabsClick {
     def apply(tab: JsExp): JsExp with JQueryRight with JQueryLeft =
-    new JsExp with JQueryRight with JQueryLeft {
-      def toJsCmd = "tabsClick("+tab.toJsCmd+")"
-    }
+      new JsExp with JQueryRight with JQueryLeft {
+        def toJsCmd = "tabsClick(" + tab.toJsCmd + ")"
+      }
 
     def apply(tab: Int): JsExp with JQueryRight with JQueryLeft =
-    apply(Num(tab))
+      apply(Num(tab))
   }
 
   object JqTabs {
     def apply(in: JsExp): JsExp with JQueryRight with JQueryLeft =
-    new JsExp with JQueryRight with JQueryLeft {
-      def toJsCmd = "tabs("+in.toJsCmd+")"
-    }
+      new JsExp with JQueryRight with JQueryLeft {
+        def toJsCmd = "tabs(" + in.toJsCmd + ")"
+      }
 
     def apply(): JsExp with JQueryRight with JQueryLeft =
-    apply(JsRaw(""))
+      apply(JsRaw(""))
   }
 
 }
 
 object JqJsCmds {
-
   implicit def jsExpToJsCmd(in: JsExp) = in.cmd
 
   case class JqOnLoad(cmd: JsCmd) extends JsCmd {
-    def toJsCmd = "jQuery(document).ready(function() {"+cmd.toJsCmd+"});"
+    def toJsCmd = "jQuery(document).ready(function() {" + cmd.toJsCmd + "});"
   }
 
   /**
@@ -214,7 +213,7 @@ object JqJsCmds {
    */
   object AppendHtml {
     def apply(uid: String, content: NodeSeq): JsCmd =
-    JqJE.JqId(JE.Str(uid)) >> JqJE.JqAppend(content)
+      JqJE.JqId(JE.Str(uid)) >> JqJE.JqAppend(content)
   }
 
   /**
@@ -222,7 +221,7 @@ object JqJsCmds {
    */
   object AppendToHtml {
     def apply(uid: String, content: NodeSeq): JsCmd =
-    JqJE.JqId(JE.Str(uid)) >> JqJE.JqAppendTo(content)
+      JqJE.JqId(JE.Str(uid)) >> JqJE.JqAppendTo(content)
   }
 
   /**
@@ -230,15 +229,15 @@ object JqJsCmds {
    */
   object PrependHtml {
     def apply(uid: String, content: NodeSeq): JsCmd =
-    JqJE.JqId(JE.Str(uid)) >> JqJE.JqPrepend(content)
+      JqJE.JqId(JE.Str(uid)) >> JqJE.JqPrepend(content)
   }
 
   /**
-   * Replaces the children of the node at {@code uid} with {@code content}
+   * Replaces the children of the node at  { @code uid } with  { @code content }
    */
   object EmptyAfter {
     def apply(uid: String, content: NodeSeq): JsCmd =
-    JqJE.JqId(JE.Str(uid)) >> JqJE.JqEmptyAfter(content)
+      JqJE.JqId(JE.Str(uid)) >> JqJE.JqEmptyAfter(content)
   }
 
   /**
@@ -246,34 +245,36 @@ object JqJsCmds {
    */
   object PrependToHtml {
     def apply(uid: String, content: NodeSeq): JsCmd =
-    JqJE.JqId(JE.Str(uid)) >> JqJE.JqPrependTo(content)
+      JqJE.JqId(JE.Str(uid)) >> JqJE.JqPrependTo(content)
   }
 
 
   case class JqSetHtml(uid: String, content: NodeSeq) extends JsCmd {
     /**
-    * Eagerly evaluate
-    */
-    val toJsCmd = 
-      "try{jQuery("+("#"+uid).encJs+").each(function(i) {this.innerHTML = "+fixHtml(uid, content)+";});} catch (e) {}"
+     * Eagerly evaluate
+     */
+    val toJsCmd =
+    "try{jQuery(" + ("#" + uid).encJs + ").each(function(i) {this.innerHTML = " + fixHtml(uid, content) + ";});} catch (e) {}"
   }
 
   object Show {
     def apply(uid: String) = new Show(uid, Empty)
+
     def apply(uid: String, time: TimeSpan) = new Show(uid, Full(time))
   }
 
-  class Show(val uid: String,val time: Box[TimeSpan]) extends JsCmd with HasTime {
-    def toJsCmd = "try{jQuery("+("#"+uid).encJs+").show("+timeStr+");} catch (e) {}"
+  class Show(val uid: String, val time: Box[TimeSpan]) extends JsCmd with HasTime {
+    def toJsCmd = "try{jQuery(" + ("#" + uid).encJs + ").show(" + timeStr + ");} catch (e) {}"
   }
 
   object Hide {
     def apply(uid: String) = new Hide(uid, Empty)
+
     def apply(uid: String, time: TimeSpan) = new Hide(uid, Full(time))
   }
 
   class Hide(val uid: String, val time: Box[TimeSpan]) extends JsCmd with HasTime {
-    def toJsCmd = "try{jQuery("+("#"+uid).encJs+").hide("+timeStr+");} catch (e) {}"
+    def toJsCmd = "try{jQuery(" + ("#" + uid).encJs + ").hide(" + timeStr + ");} catch (e) {}"
   }
 
   case class DisplayMessage(where: String, msg: NodeSeq, duration: TimeSpan, fadeTime: TimeSpan) extends JsCmd {
@@ -290,13 +291,14 @@ object JqJsCmds {
 
   object ModalDialog {
     def apply(html: NodeSeq) = new ModalDialog(html, Empty)
+
     def apply(html: NodeSeq, css: String) = new ModalDialog(html, Full(css))
   }
 
   class ModalDialog(html: NodeSeq, css: Box[String]) extends JsCmd {
-    val toJsCmd = "jQuery.blockUI({ message: "+AltXML.toXML(Group(S.session.map(s =>
-          s.fixHtml(s.processSurroundAndInclude("Modal Dialog", html))).openOr(html)), false, true, S.ieMode).encJs+
-    (css.map(w => ",  css: '"+w+"' ").openOr("")) + "});"
+    val toJsCmd = "jQuery.blockUI({ message: " + AltXML.toXML(Group(S.session.map(s =>
+            s.fixHtml(s.processSurroundAndInclude("Modal Dialog", html))).openOr(html)), false, true, S.ieMode).encJs +
+            (css.map(w => ",  css: '" + w + "' ").openOr("")) + "});"
   }
 
   case object Unblock extends JsCmd {
@@ -304,9 +306,9 @@ object JqJsCmds {
   }
 
   case class SetValueAndFocus(id: String, value: String) extends JsCmd {
-    def toJsCmd = "document.getElementById("+id.encJs+").value = "+
-    value.encJs+
-    "; document.getElementById("+id.encJs+").focus();"
+    def toJsCmd = "document.getElementById(" + id.encJs + ").value = " +
+            value.encJs +
+            "; document.getElementById(" + id.encJs + ").focus();"
   }
 
 }

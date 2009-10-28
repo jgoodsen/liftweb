@@ -29,28 +29,28 @@ import _root_.scala.xml.{NodeSeq, Text, Elem, UnprefixedAttribute, Null, Node}
  */
 trait XMLApiHelper {
   implicit def boolToResponse(in: Boolean): LiftResponse =
-  buildResponse(in, Empty, <xml:group/>)
+    buildResponse(in, Empty, <xml:group/>)
 
   implicit def canBoolToResponse(in: Box[Boolean]): LiftResponse =
-  buildResponse(in openOr false, in match {
+    buildResponse(in openOr false, in match {
       case Failure(msg, _, _) => Full(Text(msg))
       case _ => Empty
     }, <xml:group/>)
 
   implicit def pairToResponse(in: (Boolean, String)): LiftResponse =
-  buildResponse(in._1, Full(Text(in._2)), <xml:group/>)
+    buildResponse(in._1, Full(Text(in._2)), <xml:group/>)
 
   protected def operation: Option[NodeSeq] =
-  (for (req <- S.request) yield req.path.partPath match {
+    (for (req <- S.request) yield req.path.partPath match {
       case _ :: name :: _ => name
       case _ => ""
     }).map(Text)
 
   implicit def nodeSeqToResponse(in: NodeSeq): LiftResponse =
-  buildResponse(true, Empty, in)
+    buildResponse(true, Empty, in)
 
   implicit def listElemToResponse(in: Seq[Node]): LiftResponse =
-  buildResponse(true, Empty, in)
+    buildResponse(true, Empty, in)
 
   implicit def canNodeToResponse(in: Box[NodeSeq]): LiftResponse = in match {
     case Full(n) => buildResponse(true, Empty, n)
@@ -85,8 +85,8 @@ trait XMLApiHelper {
    * and the body
    */
   protected def buildResponse(success: Boolean, msg: Box[NodeSeq],
-                            body: NodeSeq): LiftResponse =
-  XmlResponse(createTag(body) % (successAttrName -> success) %
-              (new UnprefixedAttribute(operationAttrName, operation, Null)) %
-              (new UnprefixedAttribute(msgAttrName, msg, Null)))
+                              body: NodeSeq): LiftResponse =
+    XmlResponse(createTag(body) % (successAttrName -> success) %
+            (new UnprefixedAttribute(operationAttrName, operation, Null)) %
+            (new UnprefixedAttribute(msgAttrName, msg, Null)))
 }

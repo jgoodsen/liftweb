@@ -20,7 +20,7 @@ import _root_.java.util.{Locale}
 import _root_.net.liftweb.common.{Box}
 
 /**
- * The representation of a HTTP request state 
+ * The representation of a HTTP request state
  */
 trait HTTPRequest {
 
@@ -30,23 +30,23 @@ trait HTTPRequest {
   def cookies: List[HTTPCookie]
 
   /**
-   * @return - HTTP authentication scheme: BASIC, DIGEST etc. 
-   *           Empty if there is auth header. 
+   * @return - HTTP authentication scheme: BASIC, DIGEST etc.
+   *           Empty if there is auth header.
    */
   def authType: Box[String]
 
   /**
    * Return the header value by the given name
-   * 
+   *
    * @param name - the header name
-   * @return - the header value. Empty if there is no such header 
+   * @return - the header value. Empty if there is no such header
    */
   def header(name: String): Box[String] =
-  headers.filter(_.name.equalsIgnoreCase(name)).firstOption.flatMap(_.values.firstOption)
+    headers.filter(_.name.equalsIgnoreCase(name)).firstOption.flatMap(_.values.firstOption)
 
   /**
    * Return the header values by the given name.
-   * 
+   *
    * @param name - the header name
    * @return - List[String] or Nil if there is no such header
    */
@@ -59,14 +59,14 @@ trait HTTPRequest {
   def headers: List[HTTPParam]
 
   /**
-   * @return - the context path. Similar with HttpServletRequest.getContextPath. 
+   * @return - the context path. Similar with HttpServletRequest.getContextPath.
    *           Return "" empty string if your implementation does not support the contept of
    *           context path
    */
   def contextPath: String
 
   /**
-   * @return - the HTTPContext of this service. It does not guarantee that it returns the same 
+   * @return - the HTTPContext of this service. It does not guarantee that it returns the same
    *           HTTPContext reference upon each invocation but it must guarantee that HTTPContext
    *           reference contains the same information.
    */
@@ -114,9 +114,9 @@ trait HTTPRequest {
   def session: HTTPSession
 
   /**
-  * @return the sessionID (if there is one) for this request.  This will *NOT* create
-  * a new session if one does not already exist
-  */
+   * @return the sessionID (if there is one) for this request.  This will *NOT* create
+   * a new session if one does not already exist
+   */
   def sessionId: Box[String]
 
   /**
@@ -145,22 +145,22 @@ trait HTTPRequest {
   def scheme: String
 
   /**
-   * @return - the server port 
+   * @return - the server port
    */
   def serverPort: Int
 
   /**
-   * @return - the HTTP method: GET, POST etc. 
+   * @return - the HTTP method: GET, POST etc.
    */
   def method: String
 
   /**
-   * @return - Some[Any] if the implementation supports suspending&resuming requests. 
+   * @return - Some[Any] if the implementation supports suspending&resuming requests.
    */
   def hasSuspendResumeSupport_? : Option[Any]
 
   /**
-   * Suspend the curent request and resume it after a given timeout 
+   * Suspend the curent request and resume it after a given timeout
    */
   def suspend(timeout: Long): Nothing
 
@@ -170,7 +170,7 @@ trait HTTPRequest {
   def resume(what: AnyRef): Unit
 
   /**
-   * @return - the input stream for the request body 
+   * @return - the input stream for the request body
    */
   def inputStream: InputStream
 
@@ -188,10 +188,10 @@ trait HTTPRequest {
    * @return - the locale forthis request. Empty if there is not language information.
    */
   def locale: Box[Locale]
-  
+
   /**
    * Sets the character encoding that will be used for request body read
-   * 
+   *
    * @param encoding - the encoding that will be used (e.g. UTF-8)
    */
   def setCharacterEncoding(encoding: String)

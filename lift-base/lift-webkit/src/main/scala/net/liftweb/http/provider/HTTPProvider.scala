@@ -44,9 +44,9 @@ trait HTTPProvider {
    * @param resp - the response object
    * @param chain - function to be executed in case this request is supposed to not be processed by Lift
    */
-  protected def service(req: HTTPRequest, resp: HTTPResponse)(chain : => Unit) = {
+  protected def service(req: HTTPRequest, resp: HTTPResponse)(chain: => Unit) = {
     tryo {
-       LiftRules.early.toList.foreach(_(req))
+      LiftRules.early.toList.foreach(_(req))
     }
 
     val newReq = Req(req, LiftRules.rewriteTable(req), System.nanoTime)
@@ -61,29 +61,29 @@ trait HTTPProvider {
   /**
    * Executes Lift's Boot and makes necessary initializations
    */
-  protected def bootLift(loader : Box[String]) : Unit =
-  {
-    try
+  protected def bootLift(loader: Box[String]): Unit =
     {
-      val b : Bootable = loader.map(b => Class.forName(b).newInstance.asInstanceOf[Bootable]) openOr DefaultBootstrap
-      preBoot
-      b.boot
-      postBoot
+      try
+      {
+        val b: Bootable = loader.map(b => Class.forName(b).newInstance.asInstanceOf[Bootable]) openOr DefaultBootstrap
+        preBoot
+        b.boot
+        postBoot
 
-      actualServlet = new LiftServlet(context)
-      actualServlet.init
+        actualServlet = new LiftServlet(context)
+        actualServlet.init
 
-    } catch {
-      case e => Log.error("Failed to Boot", e); None
+      } catch {
+        case e => Log.error("Failed to Boot", e); None
+      }
     }
-  }
 
   private def preBoot() {
     // do this stateless
     LiftRules.statelessDispatchTable.prepend(NamedPF("Classpath service") {
-        case r @ Req(mainPath :: subPath, suffx, _) if (mainPath == LiftRules.resourceServerPath) =>
-          ResourceServer.findResourceInClasspath(r, r.path.wholePath.drop(1))
-      })
+      case r@Req(mainPath :: subPath, suffx, _) if (mainPath == LiftRules.resourceServerPath) =>
+        ResourceServer.findResourceInClasspath(r, r.path.wholePath.drop(1))
+    })
   }
 
   private def postBoot {
@@ -104,8 +104,8 @@ trait HTTPProvider {
 
   //This function tells you wether a resource exists or not, could probably be better
   private def liftHandled(in: String): Boolean = (in.indexOf(".") == -1) || in.endsWith(".html") || in.endsWith(".xhtml") ||
-  in.endsWith(".htm") ||
-  in.endsWith(".xml") || in.endsWith(".liftjs") || in.endsWith(".liftcss")
+          in.endsWith(".htm") ||
+          in.endsWith(".xml") || in.endsWith(".liftjs") || in.endsWith(".liftcss")
 
   /**
    * Tests if a request should be handled by Lift or passed to the container to be executed by other potential filters or servlets.
@@ -113,10 +113,12 @@ trait HTTPProvider {
   protected def isLiftRequest_?(session: Req): Boolean = {
     NamedPF.applyBox(session, LiftRules.liftRequest.toList) match {
       case Full(b) => b
-      case _ =>  session.path.endSlash ||
-        (session.path.wholePath.takeRight(1) match
-         {case Nil => true case x :: xs => liftHandled(x)}) ||
-        context.resource(session.uri) == null
+      case _ => session.path.endSlash ||
+              (session.path.wholePath.takeRight(1) match
+              {
+                case Nil => true case x :: xs => liftHandled(x)
+              }) ||
+              context.resource(session.uri) == null
     }
   }
 

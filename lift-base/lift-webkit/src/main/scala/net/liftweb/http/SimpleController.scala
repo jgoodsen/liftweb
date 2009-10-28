@@ -24,8 +24,9 @@ import provider._
  * The base trait of Controllers that handle pre-view requests
  */
 trait SimpleController
-{
+ {
   def request: Req
+
   def httpRequest: HTTPRequest
 
   def param(name: String): Box[String] = {
